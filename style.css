@@ -1513,3 +1513,158 @@ html[data-theme="light"] .bg-bronze-gradient {
   }
 }
 
+/* Standings Playoff Qualification Highlights */
+.standings-table tbody tr {
+  transition: all 0.25s ease;
+}
+
+.standings-table tbody tr.row-top-4 {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.01) 0%, transparent 100%);
+}
+
+.standings-table tbody tr.row-top-4 td:first-child {
+  position: relative;
+}
+
+.standings-table tbody tr.row-top-4.md-row td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background: var(--volt);
+  box-shadow: 0 0 8px var(--volt);
+  border-radius: 0 2px 2px 0;
+}
+
+.standings-table tbody tr.row-top-4.xd-row td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  border-radius: 0 2px 2px 0;
+}
+
+.standings-table tbody tr.row-eliminated {
+  opacity: 0.55;
+}
+
+.standings-table tbody tr.row-eliminated:hover {
+  opacity: 0.95;
+}
+
+/* 3D Honors Podium Hover Styles */
+.podium-step {
+  transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.35s ease;
+}
+
+.podium-step:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55), 0 0 25px rgba(255, 255, 255, 0.05);
+}
+
+.podium-step.gold:hover {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 30px rgba(245, 158, 11, 0.25);
+}
+
+.podium-step.silver:hover {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 30px rgba(203, 213, 225, 0.2);
+}
+
+.podium-step.third-place:hover {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 30px rgba(180, 83, 9, 0.2);
+}
+
+/* Confetti Canvas Overlay */
+.confetti-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Fixtures Search & Filter Deck */
+.filter-deck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  background: rgba(15, 22, 42, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.filter-search-wrapper {
+  position: relative;
+  flex: 1 1 280px;
+}
+
+.filter-search-input {
+  width: 100%;
+  padding: 0.55rem 1rem 0.55rem 2.2rem;
+  font-size: 0.8rem;
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--text-main);
+  transition: all 0.2s ease;
+}
+
+.filter-search-input:focus {
+  outline: none;
+  border-color: var(--volt);
+  box-shadow: 0 0 12px rgba(163, 230, 53, 0.25);
+}
+
+.filter-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
+.filter-pills {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-pill {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.75rem;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.filter-pill:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.filter-pill.active {
+  color: var(--text-dark);
+  background: var(--volt);
+  border-color: var(--volt);
+  box-shadow: 0 0 10px rgba(163, 230, 53, 0.35);
+}

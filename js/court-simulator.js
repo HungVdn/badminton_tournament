@@ -171,8 +171,16 @@ export class CourtSimulator {
               <path d="${receiverBoxHighlight}" class="svg-highlight-box receiving" filter="url(#neon-glow-cyan)" />
               
               <!-- Shuttlecock path animation -->
-              <path d="M ${startShuttleX},${startShuttleY} Q ${cpX},${cpY} ${endShuttleX},${endShuttleY}" class="svg-shuttle-path" />
-              <circle cx="${endShuttleX}" cy="${endShuttleY}" r="5" class="svg-shuttle" filter="url(#neon-glow-cyan)" />
+              <path id="shuttle-path" d="M ${startShuttleX},${startShuttleY} Q ${cpX},${cpY} ${endShuttleX},${endShuttleY}" class="svg-shuttle-path" />
+              <circle r="5" class="svg-shuttle" filter="url(#neon-glow-cyan)">
+                <animateMotion dur="0.7s" repeatCount="1" fill="freeze">
+                  <mpath href="#shuttle-path" />
+                </animateMotion>
+              </circle>
+
+              <!-- TRANSPARENT CLICKABLE AREAS FOR SERVICE BOXES -->
+              <path d="M 150,310 L 280,310 L 280,440 L 150,440 Z" class="svg-click-box" id="svg-click-right" style="cursor: pointer; fill: transparent; pointer-events: all;" />
+              <path d="M 20,310 L 150,310 L 150,440 L 20,440 Z" class="svg-click-box" id="svg-click-left" style="cursor: pointer; fill: transparent; pointer-events: all;" />
 
               <!-- Player Avatars Bottom (Team A) -->
               <!-- Server -->
@@ -229,8 +237,8 @@ export class CourtSimulator {
             
             <div class="court-sim-footer mt-4 p-3 glass-panel rounded-lg text-xs text-muted">
               ${this.lang === 'vi' 
-                ? '💡 <strong>Gợi ý:</strong> Vị trí giao cầu đổi bên khi và chỉ khi đội giao cầu thắng pha cầu đó và ghi điểm chẵn/lẻ. Đội nhận cầu không thay đổi vị trí khi thắng điểm.'
-                : '💡 <strong>Tip:</strong> Players only swap courts when their team wins a point on their own serve. The receiving team stays in their positions.'}
+                ? '💡 <strong>Gợi ý:</strong> Click trực tiếp vào ô sân dưới để giao chẵn/lẻ. Vị trí giao cầu đổi bên khi và chỉ khi đội giao cầu thắng pha cầu đó và ghi điểm chẵn/lẻ.'
+                : '💡 <strong>Tip:</strong> Click directly on the bottom court boxes to toggle even/odd service. Players only swap courts when their team wins a point on their own serve.'}
             </div>
           </div>
         </div>
@@ -240,5 +248,7 @@ export class CourtSimulator {
     // Add event listeners
     document.getElementById('sim-btn-even')?.addEventListener('click', () => this.setScoreParity(true));
     document.getElementById('sim-btn-odd')?.addEventListener('click', () => this.setScoreParity(false));
+    document.getElementById('svg-click-right')?.addEventListener('click', () => this.setScoreParity(true));
+    document.getElementById('svg-click-left')?.addEventListener('click', () => this.setScoreParity(false));
   }
 }

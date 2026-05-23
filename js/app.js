@@ -3,12 +3,108 @@ import { AdminPanel } from './admin.js';
 import { CourtSimulator } from './court-simulator.js';
 import { REGULATIONS_DATA } from './data.js';
 
+class ConfettiShower {
+  constructor() {
+    this.canvas = null;
+    this.ctx = null;
+    this.particles = [];
+    this.colors = ['#84cc16', '#22d3ee', '#a855f7', '#f43f5e', '#eab308'];
+    this.animationFrame = null;
+  }
+
+  start() {
+    this.stop();
+    this.canvas = document.createElement('canvas');
+    this.canvas.className = 'confetti-canvas';
+    document.body.appendChild(this.canvas);
+    this.ctx = this.canvas.getContext('2d');
+    this.resize();
+    
+    const handler = () => this.resize();
+    window.addEventListener('resize', handler);
+    this.resizeHandler = handler;
+
+    for (let i = 0; i < 120; i++) {
+      this.particles.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height - this.canvas.height,
+        r: Math.random() * 4 + 3,
+        d: Math.random() * this.canvas.height,
+        color: this.colors[Math.floor(Math.random() * this.colors.length)],
+        tilt: Math.random() * 8 - 4,
+        tiltAngleIncremental: Math.random() * 0.05 + 0.02,
+        tiltAngle: 0,
+        speed: Math.random() * 2 + 1.5
+      });
+    }
+
+    const draw = () => {
+      if (!this.ctx || !this.canvas) return;
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+      let activeParticles = 0;
+      this.particles.forEach(p => {
+        p.tiltAngle += p.tiltAngleIncremental;
+        p.y += p.speed;
+        p.x += Math.sin(p.tiltAngle) * 0.5;
+        p.tilt = Math.sin(p.tiltAngle - p.r/2) * 4;
+
+        this.ctx.beginPath();
+        this.ctx.lineWidth = p.r;
+        this.ctx.strokeStyle = p.color;
+        this.ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+        this.ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+        this.ctx.stroke();
+
+        if (p.y <= this.canvas.height) {
+          activeParticles++;
+        }
+      });
+
+      if (activeParticles > 0) {
+        this.animationFrame = requestAnimationFrame(draw);
+      } else {
+        this.stop();
+      }
+    };
+
+    draw();
+  }
+
+  resize() {
+    if (this.canvas) {
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight;
+    }
+  }
+
+  stop() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = null;
+    }
+    if (this.canvas) {
+      this.canvas.remove();
+      this.canvas = null;
+      this.ctx = null;
+    }
+    this.particles = [];
+  }
+}
+
 class BadmintonApp {
   constructor() {
     this.state = new TournamentState();
     this.lang = localStorage.getItem('badminton_lang') || 'vi';
     this.activeTab = 'dashboard';
     this.activeCategoryFilter = 'all';
+    this.fixtureSearchText = '';
+    this.fixtureStatusFilter = 'all';
+    this.confetti = new ConfettiShower();
     this.countdownTimer = null;
     
     // Core controllers
@@ -82,6 +178,7 @@ class BadmintonApp {
 
   switchTab(tabId) {
     this.activeTab = tabId;
+    if (this.confetti) this.confetti.stop();
     
     // Update active tab styles
     const tabs = document.querySelectorAll('.nav-tab');
@@ -259,7 +356,11 @@ class BadmintonApp {
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div class="dashboard-stat-card glass-card border-glow-volt">
-          <div class="stat-icon text-volt">🏆</div>
+          <div class="stat-icon text-volt flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 28px; height: 28px;" class="stroke-volt animate-pulse">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3-3h.75a3 3 0 0 0 3-3v-1.5a3 3 0 0 0-3-3H19.5M16.5 18.75v-2.25m-9 2.25v-2.25m9-2.25H7.5m9 0a4.5 4.5 0 0 0 9-9V3.75h-9v1.5a4.5 4.5 0 0 0 9 9ZM7.5 12H6.75a3 3 0 0 1-3-3V7.5a3 3 0 0 1 3-3h.75m0 7.5v-7.5" />
+            </svg>
+          </div>
           <div class="stat-info">
             <span class="stat-value">${completedMatches}/${totalMatches}</span>
             <span class="stat-label">${isVi ? 'Trận Đã Đấu' : 'Matches Completed'}</span>
@@ -271,7 +372,12 @@ class BadmintonApp {
         </div>
 
         <div class="dashboard-stat-card glass-card border-glow-cyan">
-          <div class="stat-icon text-cyan">🔥</div>
+          <div class="stat-icon text-cyan flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 28px; height: 28px;" class="stroke-cyan">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.467 5.99 5.99 0 0 0-1.925 3.546 5.974 5.974 0 0 1-2.133-1A3.75 3.75 0 0 0 12 18Z" />
+            </svg>
+          </div>
           <div class="stat-info">
             <span class="stat-value">${totalPointsScored}</span>
             <span class="stat-label">${isVi ? 'Tổng Điểm Đã Ghi' : 'Total Points Scored'}</span>
@@ -283,7 +389,11 @@ class BadmintonApp {
         </div>
 
         <div class="dashboard-stat-card glass-card border-glow-purple">
-          <div class="stat-icon text-purple">👥</div>
+          <div class="stat-icon text-purple flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 28px; height: 28px;" class="stroke-purple">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+            </svg>
+          </div>
           <div class="stat-info">
             <span class="stat-value">10 Đội</span>
             <span class="stat-label">${isVi ? '20 Vận Động Viên' : '20 Registered Players'}</span>
@@ -432,7 +542,7 @@ class BadmintonApp {
       const h2hIcon = '';
       
       return `
-        <tr class="${isTop4 ? 'row-top-4' : 'row-eliminated'}">
+        <tr class="${isTop4 ? 'row-top-4' : 'row-eliminated'} ${isMD ? 'md-row' : 'xd-row'}">
           <td class="text-center">${rankBadge}</td>
           <td class="font-bold text-slate-100">
             <div class="flex items-center gap-2 flex-wrap">
@@ -522,7 +632,7 @@ class BadmintonApp {
     }
 
     viewContainer.innerHTML = `
-      <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
         <div>
           <h2 class="view-title text-glow-volt m-0"><svg class="nav-icon mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px; vertical-align: middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ${isVi ? 'Lịch Thi Đấu & Kết Quả' : 'Match Schedule & Results'}</h2>
           <p class="view-subtitle">${isVi ? 'Theo dõi thời gian, sân thi đấu và tỉ số trực tiếp' : 'List of scheduled tournament fixtures and match scores'}</p>
@@ -541,6 +651,28 @@ class BadmintonApp {
         </div>
       </div>
 
+      <!-- Search & Status filter deck -->
+      <div class="filter-deck">
+        <div class="filter-search-wrapper">
+          <span class="filter-search-icon">🔍</span>
+          <input type="text" class="filter-search-input" id="fixture-search" 
+                 placeholder="${isVi ? 'Tìm tên đội chơi hoặc vận động viên...' : 'Search team or player name...'}" 
+                 value="${this.fixtureSearchText}">
+        </div>
+
+        <div class="filter-pills">
+          <button class="filter-pill ${this.fixtureStatusFilter === 'all' ? 'active' : ''}" data-status="all">
+            ${isVi ? 'Tất cả trạng thái' : 'All'}
+          </button>
+          <button class="filter-pill ${this.fixtureStatusFilter === 'Scheduled' ? 'active' : ''}" data-status="Scheduled">
+            ${isVi ? 'Lịch thi đấu' : 'Scheduled'}
+          </button>
+          <button class="filter-pill ${this.fixtureStatusFilter === 'Completed' ? 'active' : ''}" data-status="Completed">
+            ${isVi ? 'Đã kết thúc' : 'Completed'}
+          </button>
+        </div>
+      </div>
+
       ${contentHtml}
     `;
 
@@ -548,6 +680,39 @@ class BadmintonApp {
     document.getElementById('fix-filter-all').onclick = () => { this.activeCategoryFilter = 'all'; this.renderActiveView(); };
     document.getElementById('fix-filter-md').onclick = () => { this.activeCategoryFilter = 'md'; this.renderActiveView(); };
     document.getElementById('fix-filter-xd').onclick = () => { this.activeCategoryFilter = 'xd'; this.renderActiveView(); };
+
+    // Search events
+    const searchInput = document.getElementById('fixture-search');
+    searchInput.oninput = (e) => {
+      this.fixtureSearchText = e.target.value;
+      this.renderActiveView();
+      const input = document.getElementById('fixture-search');
+      if (input) {
+        input.focus();
+        input.setSelectionRange(this.fixtureSearchText.length, this.fixtureSearchText.length);
+      }
+    };
+
+    // Pill click events
+    const pills = document.querySelectorAll('.filter-pill');
+    pills.forEach(pill => {
+      pill.onclick = () => {
+        this.fixtureStatusFilter = pill.getAttribute('data-status');
+        this.renderActiveView();
+      };
+    });
+  }
+
+  checkPlayersIncludeSearch(t1Name, t2Name, search) {
+    const t1 = this.state.teams.find(t => t.name === t1Name);
+    const t2 = this.state.teams.find(t => t.name === t2Name);
+    if (t1 && (t1.player1.toLowerCase().includes(search) || t1.player2.toLowerCase().includes(search))) {
+      return true;
+    }
+    if (t2 && (t2.player1.toLowerCase().includes(search) || t2.player2.toLowerCase().includes(search))) {
+      return true;
+    }
+    return false;
   }
 
   renderCategoryFixtures(category) {
@@ -556,7 +721,24 @@ class BadmintonApp {
     const title = isMD ? "Men's Doubles" : "Mixed's Doubles";
     
     // Filter matches for this category
-    const catMatches = this.state.matches.filter(m => m.category === category);
+    let catMatches = this.state.matches.filter(m => m.category === category);
+
+    // Apply status filter
+    if (this.fixtureStatusFilter !== 'all') {
+      catMatches = catMatches.filter(m => m.status === this.fixtureStatusFilter);
+    }
+
+    // Apply search filter
+    if (this.fixtureSearchText.trim() !== '') {
+      const search = this.fixtureSearchText.toLowerCase().trim();
+      catMatches = catMatches.filter(m => 
+        m.team1.toLowerCase().includes(search) || 
+        m.team2.toLowerCase().includes(search) || 
+        (m.stage && m.stage.toLowerCase().includes(search)) ||
+        (m.pitch && m.pitch.toLowerCase().includes(search)) ||
+        this.checkPlayersIncludeSearch(m.team1, m.team2, search)
+      );
+    }
     
     // Group by stage
     const groupMatches = catMatches.filter(m => m.stage === 'Group Stage');
@@ -1132,6 +1314,12 @@ class BadmintonApp {
       ${renderPodium(mdAwards, "Men's Doubles", true)}
       ${renderPodium(xdAwards, "Mixed's Doubles", false)}
     `;
+
+    setTimeout(() => {
+      if (this.activeTab === 'results' && this.confetti) {
+        this.confetti.start();
+      }
+    }, 150);
   }
 
   renderRules(container) {
