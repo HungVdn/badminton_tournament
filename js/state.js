@@ -14,15 +14,10 @@ export class TournamentState {
     const savedTeams = localStorage.getItem('badminton_teams');
     const savedMatches = localStorage.getItem('badminton_matches');
 
-    if (savedPlayers && savedTeams && savedMatches) {
-      this.players = JSON.parse(savedPlayers);
-      this.teams = JSON.parse(savedTeams);
-      this.matches = JSON.parse(savedMatches);
-    } else {
-      this.players = [...INITIAL_PLAYERS];
-      this.teams = [...INITIAL_TEAMS];
-      this.matches = [...INITIAL_MATCHES];
-    }
+    this.players = savedPlayers ? JSON.parse(savedPlayers) : [...INITIAL_PLAYERS];
+    this.teams = savedTeams ? JSON.parse(savedTeams) : [...INITIAL_TEAMS];
+    this.matches = savedMatches ? JSON.parse(savedMatches) : [...INITIAL_MATCHES];
+
     this.propagateKnockoutTeams();
     this.saveToStorage();
   }
@@ -40,6 +35,7 @@ export class TournamentState {
     this.players = [...INITIAL_PLAYERS];
     this.teams = [...INITIAL_TEAMS];
     this.matches = [...INITIAL_MATCHES];
+    this.propagateKnockoutTeams();
     this.saveToStorage();
     this.notifyListeners();
   }
@@ -238,8 +234,8 @@ export class TournamentState {
         };
         this.matches.push(sf1);
       } else {
-        // Only override team names if matches are NOT completed yet
-        if (sf1.status !== 'Completed') {
+        // Override team names if match is not completed OR if it contains placeholder text (e.g. 'Place')
+        if (sf1.status !== 'Completed' || (sf1.team1 && sf1.team1.includes('Place')) || (sf1.team2 && sf1.team2.includes('Place'))) {
           sf1.team1 = t1;
           sf1.team2 = t4;
         }
@@ -261,7 +257,7 @@ export class TournamentState {
         };
         this.matches.push(sf2);
       } else {
-        if (sf2.status !== 'Completed') {
+        if (sf2.status !== 'Completed' || (sf2.team1 && sf2.team1.includes('Place')) || (sf2.team2 && sf2.team2.includes('Place'))) {
           sf2.team1 = t2;
           sf2.team2 = t3;
         }
@@ -291,7 +287,7 @@ export class TournamentState {
         };
         this.matches.push(bMatch);
       } else {
-        if (bMatch.status !== 'Completed') {
+        if (bMatch.status !== 'Completed' || (bMatch.team1 && bMatch.team1.includes('Loser')) || (bMatch.team2 && bMatch.team2.includes('Loser'))) {
           bMatch.team1 = sf1Loser;
           bMatch.team2 = sf2Loser;
         }
@@ -314,7 +310,7 @@ export class TournamentState {
         };
         this.matches.push(fMatch);
       } else {
-        if (fMatch.status !== 'Completed') {
+        if (fMatch.status !== 'Completed' || (fMatch.team1 && fMatch.team1.includes('Winner')) || (fMatch.team2 && fMatch.team2.includes('Winner'))) {
           fMatch.team1 = sf1Winner;
           fMatch.team2 = sf2Winner;
         }

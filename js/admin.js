@@ -40,7 +40,8 @@ export class AdminPanel {
   setupAdminToggleListener() {
     // Event delegation for admin triggers in the app
     document.body.addEventListener('click', (e) => {
-      if (e.target.id === 'btn-toggle-admin') {
+      const toggleAdminBtn = e.target.closest('#btn-toggle-admin');
+      if (toggleAdminBtn) {
         if (this.isAdmin) {
           this.logout();
         } else {
@@ -48,8 +49,9 @@ export class AdminPanel {
         }
       }
       
-      if (e.target.classList.contains('btn-edit-match') && this.isAdmin) {
-        const matchId = e.target.getAttribute('data-match-id');
+      const editBtn = e.target.closest('.btn-edit-match');
+      if (editBtn && this.isAdmin) {
+        const matchId = editBtn.getAttribute('data-match-id');
         this.openScoreModal(matchId);
       }
     });

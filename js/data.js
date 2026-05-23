@@ -331,7 +331,7 @@ export const REGULATIONS_DATA = {
         title: "II. Thời gian & Địa điểm",
         content: [
           "• Ngày thi đấu: 31 May 2026",
-          "• Địa điểm: Sân cầu lông Gear Games"
+          "• Địa điểm: Sân cầu lông Beta Era"
         ]
       },
       {
@@ -404,7 +404,7 @@ export const REGULATIONS_DATA = {
         title: "II. Schedule & Venue",
         content: [
           "• Date: 31 May 2026",
-          "• Venue: Gear Games Badminton Arena"
+          "• Venue: Beta Era court"
         ]
       },
       {
