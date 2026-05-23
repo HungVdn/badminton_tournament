@@ -1,0 +1,324 @@
+import { INITIAL_PLAYERS, INITIAL_TEAMS, INITIAL_MATCHES } from './data.js';
+
+export class TournamentState {
+  constructor() {
+    this.players = [];
+    this.teams = [];
+    this.matches = [];
+    this.listeners = [];
+    this.init();
+  }
+
+  init() {
+    const savedPlayers = localStorage.getItem('badminton_players');
+    const savedTeams = localStorage.getItem('badminton_teams');
+    const savedMatches = localStorage.getItem('badminton_matches');
+
+    if (savedPlayers && savedTeams && savedMatches) {
+      this.players = JSON.parse(savedPlayers);
+      this.teams = JSON.parse(savedTeams);
+      this.matches = JSON.parse(savedMatches);
+    } else {
+      this.players = [...INITIAL_PLAYERS];
+      this.teams = [...INITIAL_TEAMS];
+      this.matches = [...INITIAL_MATCHES];
+    }
+    this.propagateKnockoutTeams();
+    this.saveToStorage();
+  }
+
+  saveToStorage() {
+    localStorage.setItem('badminton_players', JSON.stringify(this.players));
+    localStorage.setItem('badminton_teams', JSON.stringify(this.teams));
+    localStorage.setItem('badminton_matches', JSON.stringify(this.matches));
+  }
+
+  resetToDefault() {
+    localStorage.removeItem('badminton_players');
+    localStorage.removeItem('badminton_teams');
+    localStorage.removeItem('badminton_matches');
+    this.players = [...INITIAL_PLAYERS];
+    this.teams = [...INITIAL_TEAMS];
+    this.matches = [...INITIAL_MATCHES];
+    this.saveToStorage();
+    this.notifyListeners();
+  }
+
+  addListener(listener) {
+    this.listeners.push(listener);
+  }
+
+  notifyListeners() {
+    this.listeners.forEach(listener => listener(this));
+  }
+
+  updateMatchScore(matchId, sets, score1, score2, status) {
+    const match = this.matches.find(m => m.id === matchId);
+    if (!match) return false;
+
+    match.sets = sets;
+    match.score1 = score1;
+    match.score2 = score2;
+    match.status = status;
+
+    if (status === 'Completed') {
+      match.winner = score1 > score2 ? match.team1 : match.team2;
+    } else {
+      match.winner = '';
+    }
+
+    // After updating a match score, we recalculate/propagate updates
+    this.propagateKnockoutTeams();
+    this.saveToStorage();
+    this.notifyListeners();
+    return true;
+  }
+
+  calculateStandings(category) {
+    const categoryTeams = this.teams.filter(t => t.category === category);
+    const categoryMatches = this.matches.filter(m => m.category === category && m.stage === 'Group Stage');
+
+    // Initialize stats
+    const stats = {};
+    categoryTeams.forEach(team => {
+      stats[team.name] = {
+        name: team.name,
+        teamId: team.id,
+        player1: team.player1,
+        player2: team.player2,
+        played: 0,
+        won: 0,
+        lost: 0,
+        points: 0, // Match wins
+        setsWon: 0,
+        setsLost: 0,
+        netSets: 0,
+        pointsWon: 0,
+        pointsLost: 0,
+        netPoints: 0
+      };
+    });
+
+    // Populate stats from completed group matches
+    categoryMatches.forEach(match => {
+      if (match.status !== 'Completed') return;
+
+      const t1 = match.team1;
+      const t2 = match.team2;
+
+      // Check if both teams exist in stats
+      if (!stats[t1] || !stats[t2]) return;
+
+      stats[t1].played += 1;
+      stats[t2].played += 1;
+
+      const s1 = Number(match.score1) || 0;
+      const s2 = Number(match.score2) || 0;
+
+      stats[t1].setsWon += s1;
+      stats[t1].setsLost += s2;
+      stats[t2].setsWon += s2;
+      stats[t2].setsLost += s1;
+
+      if (s1 > s2) {
+        stats[t1].won += 1;
+        stats[t1].points += 1;
+        stats[t2].lost += 1;
+      } else {
+        stats[t2].won += 1;
+        stats[t2].points += 1;
+        stats[t1].lost += 1;
+      }
+
+      // Sum points scored in each set
+      match.sets.forEach(set => {
+        const p1 = Number(set.t1) || 0;
+        const p2 = Number(set.t2) || 0;
+        stats[t1].pointsWon += p1;
+        stats[t1].pointsLost += p2;
+        stats[t2].pointsWon += p2;
+        stats[t2].pointsLost += p1;
+      });
+    });
+
+    // Calculate net values
+    Object.values(stats).forEach(teamStat => {
+      teamStat.netSets = teamStat.setsWon - teamStat.setsLost;
+      teamStat.netPoints = teamStat.pointsWon - teamStat.pointsLost;
+    });
+
+    const standings = Object.values(stats);
+
+    // Custom sorting function implementing the 5 tournament criteria
+    standings.sort((a, b) => {
+      // 1. Total Points (Match Wins)
+      if (b.points !== a.points) {
+        return b.points - a.points;
+      }
+
+      // 2. Net Sets (Sets difference)
+      if (b.netSets !== a.netSets) {
+        return b.netSets - a.netSets;
+      }
+
+      // 3. Head-to-Head Result (Only if exactly 2 teams are tied on points and net sets)
+      // First, check if there are other teams with the exact same points and netSets
+      const identicalTies = standings.filter(t => t.points === a.points && t.netSets === a.netSets);
+      if (identicalTies.length === 2) {
+        const directMatch = categoryMatches.find(m => 
+          m.status === 'Completed' && 
+          ((m.team1 === a.name && m.team2 === b.name) || (m.team1 === b.name && m.team2 === a.name))
+        );
+        if (directMatch) {
+          if (directMatch.winner === a.name) return -1;
+          if (directMatch.winner === b.name) return 1;
+        }
+      }
+
+      // 4. Net Points (Points difference)
+      if (b.netPoints !== a.netPoints) {
+        return b.netPoints - a.netPoints;
+      }
+
+      // 5. Drawing of Lots (fallback)
+      return a.name.localeCompare(b.name);
+    });
+
+    return standings;
+  }
+
+  isGroupStageComplete(category) {
+    const groupMatches = this.matches.filter(m => m.category === category && m.stage === 'Group Stage');
+    return groupMatches.length > 0 && groupMatches.every(m => m.status === 'Completed');
+  }
+
+  propagateKnockoutTeams() {
+    const categories = ["Men's Doubles", "Mixed's Doubles"];
+
+    categories.forEach(cat => {
+      const isComplete = this.isGroupStageComplete(cat);
+      const standings = this.calculateStandings(cat);
+
+      // Determine team names or placeholders
+      const t1 = isComplete ? standings[0].name : `1st Place ${cat === "Men's Doubles" ? "MD" : "XD"}`;
+      const t2 = isComplete ? standings[1].name : `2nd Place ${cat === "Men's Doubles" ? "MD" : "XD"}`;
+      const t3 = isComplete ? standings[2].name : `3rd Place ${cat === "Men's Doubles" ? "MD" : "XD"}`;
+      const t4 = isComplete ? standings[3].name : `4th Place ${cat === "Men's Doubles" ? "MD" : "XD"}`;
+
+      // We need to manage the knockout matches.
+      // Let's check if knockout matches already exist in matches. If not, initialize them!
+      const catSuffix = cat === "Men's Doubles" ? "MD" : "XD";
+      const sf1Id = `SF1-${catSuffix}`;
+      const sf2Id = `SF2-${catSuffix}`;
+      const fId = `F-${catSuffix}`;
+      const bId = `B-${catSuffix}`;
+
+      let sf1 = this.matches.find(m => m.id === sf1Id);
+      let sf2 = this.matches.find(m => m.id === sf2Id);
+      let fMatch = this.matches.find(m => m.id === fId);
+      let bMatch = this.matches.find(m => m.id === bId);
+
+      const sfTime = "4:30 - 5:10";
+      const finalTime = cat === "Men's Doubles" ? "5:15 - 5:55" : "6:00 - 6:40";
+
+      // 1. Semi-finals
+      if (!sf1) {
+        sf1 = {
+          id: sf1Id,
+          category: cat,
+          stage: "Semi-finals",
+          pitch: cat === "Men's Doubles" ? "Pitch 15" : "Pitch 20",
+          time: sfTime,
+          team1: t1,
+          team2: t4,
+          score1: "",
+          score2: "",
+          sets: [],
+          status: "Scheduled"
+        };
+        this.matches.push(sf1);
+      } else {
+        // Only override team names if matches are NOT completed yet
+        if (sf1.status !== 'Completed') {
+          sf1.team1 = t1;
+          sf1.team2 = t4;
+        }
+      }
+
+      if (!sf2) {
+        sf2 = {
+          id: sf2Id,
+          category: cat,
+          stage: "Semi-finals",
+          pitch: cat === "Men's Doubles" ? "Pitch 16" : "Pitch 21",
+          time: sfTime,
+          team1: t2,
+          team2: t3,
+          score1: "",
+          score2: "",
+          sets: [],
+          status: "Scheduled"
+        };
+        this.matches.push(sf2);
+      } else {
+        if (sf2.status !== 'Completed') {
+          sf2.team1 = t2;
+          sf2.team2 = t3;
+        }
+      }
+
+      // Calculate winners/losers of SFs if completed, else placeholders
+      const sf1Winner = sf1.status === 'Completed' ? sf1.winner : `Winner SF1 (${catSuffix})`;
+      const sf1Loser = sf1.status === 'Completed' ? (sf1.winner === sf1.team1 ? sf1.team2 : sf1.team1) : `Loser SF1 (${catSuffix})`;
+
+      const sf2Winner = sf2.status === 'Completed' ? sf2.winner : `Winner SF2 (${catSuffix})`;
+      const sf2Loser = sf2.status === 'Completed' ? (sf2.winner === sf2.team1 ? sf2.team2 : sf2.team1) : `Loser SF2 (${catSuffix})`;
+
+      // 2. Third-place (Bronze Match)
+      if (!bMatch) {
+        bMatch = {
+          id: bId,
+          category: cat,
+          stage: "Bronze Match",
+          pitch: cat === "Men's Doubles" ? "Pitch 15" : "Pitch 20",
+          time: finalTime,
+          team1: sf1Loser,
+          team2: sf2Loser,
+          score1: "",
+          score2: "",
+          sets: [],
+          status: "Scheduled"
+        };
+        this.matches.push(bMatch);
+      } else {
+        if (bMatch.status !== 'Completed') {
+          bMatch.team1 = sf1Loser;
+          bMatch.team2 = sf2Loser;
+        }
+      }
+
+      // 3. Grand Finals (Championship)
+      if (!fMatch) {
+        fMatch = {
+          id: fId,
+          category: cat,
+          stage: "Grand Final",
+          pitch: cat === "Men's Doubles" ? "Pitch 16" : "Pitch 21",
+          time: finalTime,
+          team1: sf1Winner,
+          team2: sf2Winner,
+          score1: "",
+          score2: "",
+          sets: [],
+          status: "Scheduled"
+        };
+        this.matches.push(fMatch);
+      } else {
+        if (fMatch.status !== 'Completed') {
+          fMatch.team1 = sf1Winner;
+          fMatch.team2 = sf2Winner;
+        }
+      }
+    });
+  }
+}
