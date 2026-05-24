@@ -83,16 +83,16 @@ export class CourtSimulator {
     
     // Coordinates based on server position (Bottom side):
     const serverX = this.isEven ? 210 : 90;
-    const serverY = 385;
+    const serverY = 400;
     
     const partnerX = this.isEven ? 90 : 210;
-    const partnerY = 440;
+    const partnerY = 400;
     
     const receiverX = this.isEven ? 90 : 210;
-    const receiverY = 115;
+    const receiverY = 100;
     
     const receiverPartnerX = this.isEven ? 210 : 90;
-    const receiverPartnerY = 60;
+    const receiverPartnerY = 100;
     
     // Active service court path (Bottom half):
     const serverBoxHighlight = this.isEven 
@@ -195,7 +195,7 @@ export class CourtSimulator {
                 <circle cx="${partnerX}" cy="${partnerY}" r="12" class="avatar-bg neutral" />
                 <text x="${partnerX}" y="${partnerY + 4}" class="avatar-text">P</text>
               </g>
-              <text x="${partnerX}" y="${partnerY + 26}" class="svg-player-name text-muted">${partnerName.split(' ')[0]}</text>
+              <text x="${partnerX}" y="${partnerY + 28}" class="svg-player-name text-muted">${partnerName.split(' ')[0]}</text>
 
               <!-- Player Avatars Top (Team B) -->
               <!-- Receiver -->
@@ -203,14 +203,14 @@ export class CourtSimulator {
                 <circle cx="${receiverX}" cy="${receiverY}" r="14" class="avatar-bg cyan" />
                 <text x="${receiverX}" y="${receiverY + 4}" class="avatar-text">R</text>
               </g>
-              <text x="${receiverX}" y="${receiverY - 20}" class="svg-player-name text-cyan">${receiverName.split(' ')[0]}</text>
+              <text x="${receiverX}" y="${receiverY - 22}" class="svg-player-name text-cyan">${receiverName.split(' ')[0]}</text>
               
               <!-- Partner B -->
               <g class="player-avatar receiver-partner">
                 <circle cx="${receiverPartnerX}" cy="${receiverPartnerY}" r="12" class="avatar-bg neutral" />
                 <text x="${receiverPartnerX}" y="${receiverPartnerY + 4}" class="avatar-text">P</text>
               </g>
-              <text x="${receiverPartnerX}" y="${receiverPartnerY - 18}" class="svg-player-name text-muted">${receiverPartnerName.split(' ')[0]}</text>
+              <text x="${receiverPartnerX}" y="${receiverPartnerY - 22}" class="svg-player-name text-muted">${receiverPartnerName.split(' ')[0]}</text>
             </svg>
           </div>
           

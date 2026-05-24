@@ -107,7 +107,11 @@ export class TournamentSync {
 
   // Save and apply a live score update received from a remote referee
   applyLiveUpdate(update) {
-    const { matchId, sets, score1, score2, currentSet, servingTeam, isEven, serverName, partnerName, receiverName, receiverPartnerName } = update;
+    const { 
+      matchId, sets, score1, score2, currentSet, servingTeam, isEven, 
+      serverName, partnerName, receiverName, receiverPartnerName,
+      isCourtSwapped, team1Right, team1Left, team2Right, team2Left
+    } = update;
     
     const liveMatches = this.getLiveMatches();
     liveMatches[matchId] = {
@@ -123,7 +127,12 @@ export class TournamentSync {
       serverName,
       partnerName,
       receiverName,
-      receiverPartnerName
+      receiverPartnerName,
+      isCourtSwapped,
+      team1Right,
+      team1Left,
+      team2Right,
+      team2Left
     };
     this.saveLiveMatches(liveMatches);
 

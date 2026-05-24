@@ -39,6 +39,8 @@ export class UmpireConsole {
     this.currentSet = this.sets.length + 1;
     this.servingTeam = 'A'; // 'A' or 'B'
     this.history = []; // Operations log for UNDO
+    this.isCourtSwapped = false;
+    this.set3SwapHappened = false;
 
     // Set initial positions: Player 1 (Right court), Player 2 (Left court)
     this.team1Right = this.team1Players[0];
@@ -80,7 +82,8 @@ export class UmpireConsole {
       serverName: this.getServerName(),
       partnerName: this.getServerPartnerName(),
       receiverName: this.getReceiverName(),
-      receiverPartnerName: this.getReceiverPartnerName()
+      receiverPartnerName: this.getReceiverPartnerName(),
+      isCourtSwapped: this.isCourtSwapped
     };
   }
 
@@ -160,6 +163,7 @@ export class UmpireConsole {
 
   addPoint(team) {
     this.saveToHistory();
+    const isVi = this.lang === 'vi';
 
     if (team === 'A') {
       // Swapping rule: swap only if this team holds the serve
@@ -178,6 +182,19 @@ export class UmpireConsole {
       }
       this.score2++;
       this.servingTeam = 'B';
+    }
+
+    // Check if in Set 3 and score reaches mid-point swap
+    if (this.currentSet === 3 && !this.set3SwapHappened) {
+      const midPoint = this.targetPoints === 15 ? 8 : 11;
+      if (this.score1 === midPoint || this.score2 === midPoint) {
+        this.set3SwapHappened = true;
+        this.showSwapNotice(isVi 
+          ? `⚡ Điểm số đạt mốc ${midPoint}! Cả hai đội đổi bên sân.`
+          : `⚡ Score reached ${midPoint}! Both teams must swap sides.`
+        );
+        this.isCourtSwapped = !this.isCourtSwapped;
+      }
     }
 
     this.checkSetWinner();
@@ -236,25 +253,17 @@ export class UmpireConsole {
       } else {
         // Start next set
         const winnerName = s1 > s2 ? this.match.team1 : this.match.team2;
-        alert(this.lang === 'vi' 
-          ? `Set ${this.currentSet} kết thúc! Đội ${winnerName} thắng set này. Chuẩn bị sang Set ${this.currentSet + 1}.` 
-          : `Set ${this.currentSet} completed! ${winnerName} won this set. Prepare for Set ${this.currentSet + 1}.`
+        
+        this.showSwapNotice(this.lang === 'vi' 
+          ? `Set ${this.currentSet} kết thúc! Đội ${winnerName} thắng set này. Chuẩn bị sang Set ${this.currentSet + 1}. Cả hai đội đổi bên sân.`
+          : `Set ${this.currentSet} completed! ${winnerName} won this set. Prepare for Set ${this.currentSet + 1}. Both teams must swap sides.`
         );
+
         this.score1 = 0;
         this.score2 = 0;
         this.currentSet++;
         this.servingTeam = s1 > s2 ? 'A' : 'B';
-        
-        // BWF Court End Change: Swap sides visually (simulated by swapping names on console)
-        const tempR1 = this.team1Right, tempL1 = this.team1Left;
-        this.team1Right = this.team2Right;
-        this.team1Left = this.team2Left;
-        this.team2Right = tempR1;
-        this.team2Left = tempL1;
-
-        const tempPlayers = this.team1Players;
-        this.team1Players = this.team2Players;
-        this.team2Players = tempPlayers;
+        this.isCourtSwapped = !this.isCourtSwapped;
       }
     }
   }
@@ -269,12 +278,8 @@ export class UmpireConsole {
     this.sync.broadcast('LIVE_MATCH_END', { matchId: this.matchId });
     this.sync.setMatchLiveStatus(this.matchId, false);
 
-    alert(this.lang === 'vi' 
-      ? `Trận đấu KẾT THÚC! Đội ${finalWinner} giành chiến thắng chung cuộc!` 
-      : `Match COMPLETED! ${finalWinner} won the match!`
-    );
-
-    this.close();
+    // Show premium celebration end card modal
+    this.showMatchEndNotice(finalWinner);
   }
 
   close() {
@@ -288,11 +293,140 @@ export class UmpireConsole {
     }
     
     if (this.onFinish) this.onFinish();
+
+    // Route back to dashboard homepage
+    if (window.BadmintonAppInstance) {
+      window.BadmintonAppInstance.switchTab('dashboard');
+    }
   }
+
+  showSwapNotice(text) {
+    const isVi = this.lang === 'vi';
+    const modal = document.createElement('div');
+    modal.className = 'swap-notice-modal-backdrop';
+    modal.innerHTML = `
+      <div class="swap-notice-modal-card glass-card text-center animate-scale-in">
+        <div class="swap-icon-container mb-4 text-glow-volt animate-bounce" style="font-size: 3rem; filter: drop-shadow(0 0 12px rgba(132, 204, 22, 0.45));">
+          🏸
+        </div>
+        <h3 class="text-sm font-black text-glow-volt mb-2" style="font-size: 1.2rem; letter-spacing: 0.05em;">${isVi ? 'ĐỔI BÊN SÂN!' : 'SWAP COURTS!'}</h3>
+        <p class="text-xs text-slate-200 mb-6 font-semibold" style="line-height: 1.5;">${text}</p>
+        <button class="btn btn-sm btn-volt w-full py-2.5 font-bold uppercase tracking-wider" id="swap-notice-btn-ok">
+          ${isVi ? 'Đã hiểu & Tiếp tục' : 'Got It & Continue'}
+        </button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('swap-notice-btn-ok').onclick = () => {
+      modal.classList.add('animate-fade-out');
+      setTimeout(() => modal.remove(), 300);
+    };
+
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+      if (document.body.contains(modal)) {
+        modal.classList.add('animate-fade-out');
+        setTimeout(() => modal.remove(), 300);
+      }
+    }, 5000);
+  }
+
+  showMatchEndNotice(winnerName) {
+    const isVi = this.lang === 'vi';
+    const stage = this.match.stage || 'Group Stage';
+    
+    // Stage-specific celebration details mapping
+    let title = isVi ? 'CHIẾN THẮNG TRẬN ĐẤU!' : 'WIN THE MATCH!';
+    let subtitle = isVi ? 'TRẬN ĐẤU ĐÃ KẾT THÚC' : 'MATCH COMPLETED';
+    let message = isVi 
+      ? `🎉 Chúc mừng đội **${winnerName}** đã xuất sắc giành chiến thắng trong trận đấu này! 🎉`
+      : `🎉 Congratulations to **${winnerName}** on winning this match! 🎉`;
+    let icon = '🏸';
+    let labelWinner = isVi ? 'ĐỘI GIÀNH CHIẾN THẮNG' : 'MATCH WINNER';
+    let themeColor = '#84cc16'; // volt green
+    let glowFilter = 'rgba(132, 204, 22, 0.45)';
+
+    if (stage === 'Semi-finals') {
+      title = isVi ? 'CHÚC MỪNG CHIẾN THẮNG BÁN KẾT!' : 'CONGRATULATIONS ON WINNING!';
+      subtitle = isVi ? 'GIÀNH VÉ VÀO CHUNG KẾT' : 'QUALIFIED FOR THE FINALS';
+      message = isVi
+        ? `⚡ Tuyệt vời! Đội **${winnerName}** đã giành chiến thắng trận đấu Bán Kết và chính thức giành quyền bước vào trận Chung Kết tranh chức vô địch (Grand Final)! 🏆`
+        : `⚡ Spectacular! **${winnerName}** won the Semi-finals and officially qualified for the championship Grand Final! 🏆`;
+      icon = '🏅';
+      labelWinner = isVi ? 'ĐỘI CHIẾN THẮNG BÁN KẾT' : 'SEMI-FINALS WINNER';
+      themeColor = '#06b6d4'; // Cyan
+      glowFilter = 'rgba(6, 182, 212, 0.45)';
+    } else if (stage === 'Grand Final') {
+      title = isVi ? 'NHÀ VÔ ĐỊCH GIẢI ĐẤU!' : 'TOURNAMENT CHAMPIONS!';
+      subtitle = isVi ? 'CÚP VÔ ĐỊCH GEAR GAMES 2026' : 'GEAR GAMES BADMINTON 2026 CUP';
+      message = isVi
+        ? `👑 TÂN VƯƠNG GIẢI ĐẤU! Xin được nhiệt liệt vinh danh nhà vô địch Gear Games Badminton 2026: **${winnerName}**! Chiến thắng lịch sử vô cùng xứng đáng! 🏆🥇`
+        : `👑 CHAMPIONS! Huge congratulations to the ultimate champions of the Gear Games 2026 Badminton Tournament: **${winnerName}**! A historic and well-deserved victory! 🏆🥇`;
+      icon = '🏆';
+      labelWinner = isVi ? 'QUÁN QUÂN GIẢI ĐẤU' : 'TOURNAMENT CHAMPIONS';
+      themeColor = '#fbbf24'; // Gold
+      glowFilter = 'rgba(251, 191, 36, 0.5)';
+    } else if (stage === 'Bronze Match') {
+      title = isVi ? 'ĐOẠT HẠNG BA CHUNG CUỘC!' : 'BRONZE MEDALISTS!';
+      subtitle = isVi ? 'HUY CHƯƠNG ĐỒNG THUỘC VỀ' : 'BRONZE MEDAL SECURED';
+      message = isVi
+        ? `🥉 Tuyệt vời! Đội **${winnerName}** đã giành chiến thắng trận tranh Hạng Ba và xuất sắc mang về tấm **Huy Chương Đồng** danh giá! 🥉`
+        : `🥉 Superb! **${winnerName}** won the Bronze Match and successfully claimed the prestigious **Bronze Medal**! 🥉`;
+      icon = '🥉';
+      labelWinner = isVi ? 'HẠNG BA CHUNG CUỘC' : 'BRONZE WINNER';
+      themeColor = '#ea580c'; // Bronze orange
+      glowFilter = 'rgba(234, 88, 12, 0.45)';
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'match-end-modal-backdrop relative';
+    modal.innerHTML = `
+      <div class="match-end-modal-card glass-card text-center animate-scale-in relative overflow-hidden" style="max-width: 480px; width: 90%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 60px ${glowFilter}; z-index: 2;">
+        <div class="relative" style="z-index: 2;">
+          <div class="trophy-icon-container mb-4 animate-bounce" style="font-size: 4.5rem; filter: drop-shadow(0 0 18px ${glowFilter}); line-height: 1;">
+            ${icon}
+          </div>
+          
+          <h2 class="text-lg font-black mb-1" style="font-size: 1.5rem; color: ${themeColor}; filter: drop-shadow(0 0 8px ${glowFilter});">${title}</h2>
+          <p class="text-xs text-slate-400 mb-4 uppercase tracking-widest font-bold">${subtitle}</p>
+          
+          <div class="bg-slate-950/60 rounded-xl p-4 border border-slate-900 mb-6">
+            <span class="text-5xs uppercase font-extrabold text-slate-500 block mb-1.5">${labelWinner}</span>
+            <span class="text-sm font-black text-white uppercase" style="font-size: 1.25rem; filter: drop-shadow(0 0 8px rgba(255,255,255,0.25));">${winnerName}</span>
+            
+            <div class="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-slate-900/60">
+              ${this.sets.map((s, idx) => `
+                <div class="bg-slate-900/80 px-2.5 py-1 rounded text-4xs font-bold text-slate-300">
+                  S${idx + 1}: <span class="text-volt">${s.t1}</span>-<span class="text-cyan">${s.t2}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-200 mb-6 font-semibold px-2" style="line-height: 1.6;">${message}</p>
+          
+          <button class="btn w-full py-3 font-extrabold uppercase tracking-wider text-xs flex items-center justify-center gap-2" id="match-end-btn-home" style="font-size: 0.85rem; background-color: ${themeColor}; color: #000; box-shadow: 0 4px 14px ${glowFilter}; border: none;">
+            🏠 ${isVi ? 'Quay về trang chủ' : 'Back to Homepage'}
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('match-end-btn-home').onclick = () => {
+      modal.classList.add('animate-fade-out');
+      setTimeout(() => {
+        modal.remove();
+        this.close();
+      }, 300);
+    };
+  }
+
 
   toggleServe() {
     this.saveToHistory();
-    this.servingTeam = this.servingTeam === 'A' ? 'B' : 'A';
+    this.servingTeam = this.servingTeam === 'B' ? 'A' : 'B';
     this.render();
     this.broadcastUpdate();
   }
@@ -319,31 +453,84 @@ export class UmpireConsole {
     container.classList.remove('hidden');
 
     const isVi = this.lang === 'vi';
-    const server = this.getServerName();
-    const receiver = this.getReceiverName();
     const isEven = (this.servingTeam === 'A' ? this.score1 : this.score2) % 2 === 0;
 
-    // SVG coordinates setup mapping:
-    const serverX = this.servingTeam === 'A' ? (isEven ? 210 : 90) : (isEven ? 90 : 210);
-    const serverY = this.servingTeam === 'A' ? 385 : 115;
-    
-    const partnerX = this.servingTeam === 'A' ? (isEven ? 90 : 210) : (isEven ? 210 : 90);
-    const partnerY = this.servingTeam === 'A' ? 440 : 60;
-    
-    const receiverX = this.servingTeam === 'A' ? (isEven ? 90 : 210) : (isEven ? 210 : 90);
-    const receiverY = this.servingTeam === 'A' ? 115 : 385;
-    
-    const receiverPartnerX = this.servingTeam === 'A' ? (isEven ? 210 : 90) : (isEven ? 90 : 210);
-    const receiverPartnerY = this.servingTeam === 'A' ? 60 : 440;
+    // Players positioning side-by-side:
+    // If not swapped: Team 1 (A) is bottom, Team 2 (B) is top.
+    // If swapped: Team 2 (B) is bottom, Team 1 (A) is top.
+    let brName, blName, trName, tlName;
 
-    // Highlights
-    const serverBoxHighlight = this.servingTeam === 'A'
-      ? (isEven ? `M 150,310 L 280,310 L 280,440 L 150,440 Z` : `M 20,310 L 150,310 L 150,440 L 20,440 Z`)
-      : (isEven ? `M 20,60 L 150,60 L 150,190 L 20,190 Z` : `M 150,60 L 280,60 L 280,190 L 150,190 Z`);
+    if (!this.isCourtSwapped) {
+      brName = this.team1Right;
+      blName = this.team1Left;
+      trName = this.team2Right; // Screen left x=90 (Top side right court)
+      tlName = this.team2Left;  // Screen right x=210 (Top side left court)
+    } else {
+      brName = this.team2Right;
+      blName = this.team2Left;
+      trName = this.team1Right; // Screen left x=90
+      tlName = this.team1Left;  // Screen right x=210
+    }
 
-    const receiverBoxHighlight = this.servingTeam === 'A'
-      ? (isEven ? `M 20,60 L 150,60 L 150,190 L 20,190 Z` : `M 150,60 L 280,60 L 280,190 L 150,190 Z`)
-      : (isEven ? `M 150,310 L 280,310 L 280,440 L 150,440 Z` : `M 20,310 L 150,310 L 150,440 L 20,440 Z`);
+    const serverName = this.getServerName();
+    const receiverName = this.getReceiverName();
+
+    // Map each position's roles
+    const getRole = (name) => {
+      if (name === serverName) return 'S';
+      if (name === receiverName) return 'R';
+      return 'P';
+    };
+
+    const getBgClass = (name) => {
+      if (name === serverName) return 'volt';
+      if (name === receiverName) return 'cyan';
+      return 'neutral';
+    };
+
+    const getTextColorClass = (name) => {
+      if (name === serverName) return 'text-volt';
+      if (name === receiverName) return 'text-cyan';
+      return 'text-slate-200';
+    };
+
+    const getShuttleBadge = (name) => {
+      if (name !== serverName) return '';
+      return `
+        <g class="shuttle-badge" transform="translate(11, -11)">
+          <circle cx="0" cy="0" r="8.5" fill="#090d16" stroke="#84cc16" stroke-width="1.2" />
+          <text x="0" y="3.5" font-size="10" text-anchor="middle" font-family="sans-serif">🏸</text>
+        </g>
+      `;
+    };
+
+
+    // Find Server and Receiver coordinates for shuttlecock flight and highlights
+    let serverX, serverY, receiverX, receiverY;
+    if (serverName === brName) { serverX = 210; serverY = 355; }
+    else if (serverName === blName) { serverX = 90; serverY = 355; }
+    else if (serverName === trName) { serverX = 90; serverY = 145; }
+    else { serverX = 210; serverY = 145; }
+
+    if (receiverName === brName) { receiverX = 210; receiverY = 355; }
+    else if (receiverName === blName) { receiverX = 90; receiverY = 355; }
+    else if (receiverName === trName) { receiverX = 90; receiverY = 145; }
+    else { receiverX = 210; receiverY = 145; }
+
+    const getHighlightPath = (x, y) => {
+      if (y === 355) {
+        return x === 210
+          ? `M 150,310 L 280,310 L 280,440 L 150,440 Z`
+          : `M 20,310 L 150,310 L 150,440 L 20,440 Z`;
+      } else {
+        return x === 90
+          ? `M 20,60 L 150,60 L 150,190 L 20,190 Z`
+          : `M 150,60 L 280,60 L 280,190 L 150,190 Z`;
+      }
+    };
+
+    const serverBoxHighlight = getHighlightPath(serverX, serverY);
+    const receiverBoxHighlight = getHighlightPath(receiverX, receiverY);
 
     // Parabolic motion path for live shuttle
     const cpX = (serverX + receiverX) / 2 + 30;
@@ -486,40 +673,39 @@ export class UmpireConsole {
                   </animateMotion>
                 </circle>
 
-                <!-- Rendering Player Avatars depending on active sides -->
-                <!-- Bottom side (Team A) -->
-                <g class="player-avatar ${this.servingTeam === 'A' ? 'server' : 'partner'}">
-                  <circle cx="${this.servingTeam === 'A' ? (isEven ? 210 : 90) : (isEven ? 90 : 210)}" 
-                          cy="385" r="13" class="avatar-bg ${this.servingTeam === 'A' ? 'volt' : 'neutral'}" />
-                  <text x="${this.servingTeam === 'A' ? (isEven ? 210 : 90) : (isEven ? 90 : 210)}" 
-                        y="389" class="avatar-text">${this.servingTeam === 'A' ? 'S' : 'P'}</text>
+                <!-- Player Avatars Bottom (Team on same horizontal line in middle of bottom court at y=355) -->
+                <!-- Bottom Left Player -->
+                <g class="player-avatar ${blName === serverName ? 'server' : (blName === receiverName ? 'receiver' : 'partner')}" transform="translate(90, 355)">
+                  <circle cx="0" cy="0" r="13" class="avatar-bg ${getBgClass(blName)}" />
+                  <text x="0" y="4" class="avatar-text">${getRole(blName)}</text>
+                  ${getShuttleBadge(blName)}
                 </g>
-                <text x="${isEven ? 210 : 90}" y="415" class="svg-player-name text-slate-200 font-bold">${(isEven ? this.team1Right : this.team1Left).split(' ')[0]}</text>
+                <text x="90" y="383" class="svg-player-name ${getTextColorClass(blName)} font-bold">${blName.split(' ')[0]}</text>
 
-                <g class="player-avatar ${this.servingTeam === 'A' ? 'partner' : 'server'}">
-                  <circle cx="${this.servingTeam === 'A' ? (isEven ? 90 : 210) : (isEven ? 210 : 90)}" 
-                          cy="440" r="11" class="avatar-bg neutral" />
-                  <text x="${this.servingTeam === 'A' ? (isEven ? 90 : 210) : (isEven ? 210 : 90)}" 
-                        y="444" class="avatar-text">P</text>
+                <!-- Bottom Right Player -->
+                <g class="player-avatar ${brName === serverName ? 'server' : (brName === receiverName ? 'receiver' : 'partner')}" transform="translate(210, 355)">
+                  <circle cx="0" cy="0" r="13" class="avatar-bg ${getBgClass(brName)}" />
+                  <text x="0" y="4" class="avatar-text">${getRole(brName)}</text>
+                  ${getShuttleBadge(brName)}
                 </g>
-                <text x="${isEven ? 90 : 210}" y="468" class="svg-player-name text-muted">${(isEven ? this.team1Left : this.team1Right).split(' ')[0]}</text>
+                <text x="210" y="383" class="svg-player-name ${getTextColorClass(brName)} font-bold">${brName.split(' ')[0]}</text>
 
-                <!-- Top side (Team B) -->
-                <g class="player-avatar ${this.servingTeam === 'B' ? 'server' : 'receiver'}">
-                  <circle cx="${this.servingTeam === 'B' ? (isEven ? 90 : 210) : (isEven ? 90 : 210)}" 
-                          cy="115" r="13" class="avatar-bg ${this.servingTeam === 'B' ? 'volt' : 'cyan'}" />
-                  <text x="${this.servingTeam === 'B' ? (isEven ? 90 : 210) : (isEven ? 90 : 210)}" 
-                        y="119" class="avatar-text">${this.servingTeam === 'B' ? 'S' : 'R'}</text>
+                <!-- Player Avatars Top (Team on same horizontal line in middle of top court at y=145) -->
+                <!-- Top Right Player (Screen Left x=90) -->
+                <g class="player-avatar ${trName === serverName ? 'server' : (trName === receiverName ? 'receiver' : 'partner')}" transform="translate(90, 145)">
+                  <circle cx="0" cy="0" r="13" class="avatar-bg ${getBgClass(trName)}" />
+                  <text x="0" y="4" class="avatar-text">${getRole(trName)}</text>
+                  ${getShuttleBadge(trName)}
                 </g>
-                <text x="${isEven ? 90 : 210}" y="95" class="svg-player-name text-slate-200 font-bold">${(isEven ? this.team2Right : this.team2Left).split(' ')[0]}</text>
+                <text x="90" y="123" class="svg-player-name ${getTextColorClass(trName)} font-bold">${trName.split(' ')[0]}</text>
 
-                <g class="player-avatar ${this.servingTeam === 'B' ? 'partner' : 'partner'}">
-                  <circle cx="${this.servingTeam === 'B' ? (isEven ? 210 : 90) : (isEven ? 210 : 90)}" 
-                          cy="60" r="11" class="avatar-bg neutral" />
-                  <text x="${this.servingTeam === 'B' ? (isEven ? 210 : 90) : (isEven ? 210 : 90)}" 
-                        y="64" class="avatar-text">P</text>
+                <!-- Top Left Player (Screen Right x=210) -->
+                <g class="player-avatar ${tlName === serverName ? 'server' : (tlName === receiverName ? 'receiver' : 'partner')}" transform="translate(210, 145)">
+                  <circle cx="0" cy="0" r="13" class="avatar-bg ${getBgClass(tlName)}" />
+                  <text x="0" y="4" class="avatar-text">${getRole(tlName)}</text>
+                  ${getShuttleBadge(tlName)}
                 </g>
-                <text x="${isEven ? 210 : 90}" y="42" class="svg-player-name text-muted">${(isEven ? this.team2Left : this.team2Right).split(' ')[0]}</text>
+                <text x="210" y="123" class="svg-player-name ${getTextColorClass(tlName)} font-bold">${tlName.split(' ')[0]}</text>
               </svg>
             </div>
             

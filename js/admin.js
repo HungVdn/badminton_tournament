@@ -69,6 +69,13 @@ export class AdminPanel {
         const match = this.state.matches.find(m => m.id === matchId);
         if (!match) return;
 
+        // Validation: Check if players are decided
+        const readyCheck = this.checkMatchReadyState(match);
+        if (!readyCheck.ready) {
+          this.showUnreadyAlert(readyCheck.reason);
+          return;
+        }
+
         // Validation: Must be super admin, or referee of this pitch
         if (this.isAdmin || (this.isRef && match.pitch === this.refPitch)) {
           this.openScoreModal(matchId);
@@ -83,6 +90,13 @@ export class AdminPanel {
         const match = this.state.matches.find(m => m.id === matchId);
         if (!match) return;
 
+        // Validation: Check if players are decided
+        const readyCheck = this.checkMatchReadyState(match);
+        if (!readyCheck.ready) {
+          this.showUnreadyAlert(readyCheck.reason);
+          return;
+        }
+
         if (this.isAdmin || (this.isRef && match.pitch === this.refPitch)) {
           this.openUmpireConsole(matchId);
         } else {
@@ -91,6 +105,95 @@ export class AdminPanel {
       }
     });
   }
+
+  checkMatchReadyState(match) {
+    const isVi = this.lang === 'vi';
+    
+    // 1. Group Stage check
+    if (
+      (match.team1 && match.team1.includes('Place')) ||
+      (match.team2 && match.team2.includes('Place'))
+    ) {
+      return {
+        ready: false,
+        reason: isVi 
+          ? `Chưa thể tiến hành trận đấu này! Vui lòng đợi Vòng Bảng kết thúc để xác định các đội dẫn đầu tham gia thi đấu.`
+          : `This match cannot be played yet! Please wait for the Group Stage to complete to decide the playing teams.`
+      };
+    }
+
+    // 2. Playoff (SF) check
+    const catSuffix = match.category === "Men's Doubles" ? "MD" : "XD";
+    
+    const isWaitingSF1 = (match.team1 && (match.team1.includes('SF1') || match.team1.includes('Winner SF1') || match.team1.includes('Loser SF1'))) ||
+                         (match.team2 && (match.team2.includes('SF1') || match.team2.includes('Winner SF1') || match.team2.includes('Loser SF1')));
+    
+    const isWaitingSF2 = (match.team1 && (match.team1.includes('SF2') || match.team1.includes('Winner SF2') || match.team1.includes('Loser SF2'))) ||
+                         (match.team2 && (match.team2.includes('SF2') || match.team2.includes('Winner SF2') || match.team2.includes('Loser SF2')));
+
+    if (isWaitingSF1) {
+      const sf1Id = `SF1-${catSuffix}`;
+      const sf1Match = this.state.matches.find(m => m.id === sf1Id);
+      if (sf1Match && sf1Match.status !== 'Completed') {
+        const waitingLabel = isVi 
+          ? `Bán Kết 1 (${match.category})`
+          : `Semi-final 1 (${match.category})`;
+        return {
+          ready: false,
+          reason: isVi
+            ? `Trận đấu này đang chờ kết quả của trận bán kết **${waitingLabel}** hoàn thành để xác định cặp đấu.`
+            : `This match is waiting for the result of semi-final match **${waitingLabel}** to complete.`
+        };
+      }
+    }
+
+    if (isWaitingSF2) {
+      const sf2Id = `SF2-${catSuffix}`;
+      const sf2Match = this.state.matches.find(m => m.id === sf2Id);
+      if (sf2Match && sf2Match.status !== 'Completed') {
+        const waitingLabel = isVi 
+          ? `Bán Kết 2 (${match.category})`
+          : `Semi-final 2 (${match.category})`;
+        return {
+          ready: false,
+          reason: isVi
+            ? `Trận đấu này đang chờ kết quả của trận bán kết **${waitingLabel}** hoàn thành để xác định cặp đấu.`
+            : `This match is waiting for the result of semi-final match **${waitingLabel}** to complete.`
+        };
+      }
+    }
+
+    return { ready: true };
+  }
+
+  showUnreadyAlert(reason) {
+    const isVi = this.lang === 'vi';
+    const modal = document.createElement('div');
+    modal.className = 'swap-notice-modal-backdrop'; // reusable backdrop
+    modal.innerHTML = `
+      <div class="swap-notice-modal-card glass-card text-center animate-scale-in" style="max-width: 400px; width: 90%; border-color: rgba(239, 68, 68, 0.3); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 40px rgba(239, 68, 68, 0.25);">
+        <div class="mb-4 text-danger animate-pulse" style="font-size: 3rem;">
+          ⚠️
+        </div>
+        <h3 class="text-sm font-black text-danger mb-2" style="font-size: 1.15rem; letter-spacing: 0.05em;">
+          ${isVi ? 'TRẬN ĐẤU CHƯA SẴN SÀNG!' : 'MATCH NOT READY!'}
+        </h3>
+        <p class="text-xs text-slate-200 mb-6 font-semibold px-2" style="line-height: 1.6;">
+          ${reason}
+        </p>
+        <button class="btn btn-sm btn-danger w-full py-2.5 font-bold uppercase tracking-wider" id="unready-alert-btn-ok">
+          ${isVi ? 'Đã hiểu' : 'Got It'}
+        </button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('unready-alert-btn-ok').onclick = () => {
+      modal.classList.add('animate-fade-out');
+      setTimeout(() => modal.remove(), 300);
+    };
+  }
+
 
   openUmpireConsole(matchId) {
     if (!this.sync) return;
@@ -106,6 +209,7 @@ export class AdminPanel {
     sessionStorage.setItem('badminton_isAdmin', 'false');
     sessionStorage.setItem('badminton_isRef', 'false');
     sessionStorage.removeItem('badminton_refPitch');
+    sessionStorage.removeItem('badminton_authLabel');
     this.onUpdate();
     
     const notification = this.lang === 'vi' ? 'Đã đăng xuất tài khoản!' : 'Logged out successfully!';
@@ -168,6 +272,7 @@ export class AdminPanel {
         sessionStorage.setItem('badminton_isAdmin', 'true');
         sessionStorage.setItem('badminton_isRef', 'false');
         sessionStorage.removeItem('badminton_refPitch');
+        sessionStorage.setItem('badminton_authLabel', auth.label);
       } else {
         this.isRef = true;
         this.isAdmin = false;
@@ -175,6 +280,7 @@ export class AdminPanel {
         sessionStorage.setItem('badminton_isAdmin', 'false');
         sessionStorage.setItem('badminton_isRef', 'true');
         sessionStorage.setItem('badminton_refPitch', auth.pitch);
+        sessionStorage.setItem('badminton_authLabel', auth.label);
       }
       
       document.getElementById('admin-modal-container').classList.add('hidden');
