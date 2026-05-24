@@ -1,11 +1,23 @@
+import { UmpireConsole } from './umpire.js';
+
 export class AdminPanel {
-  constructor(state, onUpdateCallback) {
+  constructor(state, onUpdateCallback, sync) {
     this.state = state;
     this.onUpdate = onUpdateCallback;
+    this.sync = sync;
     this.isAdmin = false;
+    this.isRef = false;
+    this.refPitch = '';
     this.activeMatchId = null;
     this.lang = 'vi';
-    this.passkey = 'admin2026';
+    
+    this.passkeys = {
+      'admin2026': { role: 'admin', label: 'Super Admin' },
+      'ref15': { role: 'ref', pitch: 'Pitch 15', label: 'Pitch 15 Umpire' },
+      'ref16': { role: 'ref', pitch: 'Pitch 16', label: 'Pitch 16 Umpire' },
+      'ref20': { role: 'ref', pitch: 'Pitch 20', label: 'Pitch 20 Umpire' },
+      'ref21': { role: 'ref', pitch: 'Pitch 21', label: 'Pitch 21 Umpire' }
+    };
     
     this.init();
   }
@@ -16,6 +28,8 @@ export class AdminPanel {
 
   init() {
     this.isAdmin = sessionStorage.getItem('badminton_isAdmin') === 'true';
+    this.isRef = sessionStorage.getItem('badminton_isRef') === 'true';
+    this.refPitch = sessionStorage.getItem('badminton_refPitch') || '';
     this.createModalContainer();
     this.setupAdminToggleListener();
   }
@@ -42,7 +56,7 @@ export class AdminPanel {
     document.body.addEventListener('click', (e) => {
       const toggleAdminBtn = e.target.closest('#btn-toggle-admin');
       if (toggleAdminBtn) {
-        if (this.isAdmin) {
+        if (this.isAdmin || this.isRef) {
           this.logout();
         } else {
           this.showAdminLogin();
@@ -50,19 +64,51 @@ export class AdminPanel {
       }
       
       const editBtn = e.target.closest('.btn-edit-match');
-      if (editBtn && this.isAdmin) {
+      if (editBtn) {
         const matchId = editBtn.getAttribute('data-match-id');
-        this.openScoreModal(matchId);
+        const match = this.state.matches.find(m => m.id === matchId);
+        if (!match) return;
+
+        // Validation: Must be super admin, or referee of this pitch
+        if (this.isAdmin || (this.isRef && match.pitch === this.refPitch)) {
+          this.openScoreModal(matchId);
+        } else {
+          this.showToast(this.lang === 'vi' ? 'Bạn không có quyền chỉnh sửa trận đấu ở sân này!' : 'You are not authorized to edit matches on this pitch!', 'info');
+        }
       }
+
+      const joinBtn = e.target.closest('.btn-join-match');
+      if (joinBtn) {
+        const matchId = joinBtn.getAttribute('data-match-id');
+        const match = this.state.matches.find(m => m.id === matchId);
+        if (!match) return;
+
+        if (this.isAdmin || (this.isRef && match.pitch === this.refPitch)) {
+          this.openUmpireConsole(matchId);
+        } else {
+          this.showToast(this.lang === 'vi' ? 'Bạn không có quyền trọng tài ở sân này!' : 'You are not authorized to umpire on this pitch!', 'info');
+        }
+      }
+    });
+  }
+
+  openUmpireConsole(matchId) {
+    if (!this.sync) return;
+    new UmpireConsole(this.state, this.sync, matchId, () => {
+      this.onUpdate();
     });
   }
 
   logout() {
     this.isAdmin = false;
+    this.isRef = false;
+    this.refPitch = '';
     sessionStorage.setItem('badminton_isAdmin', 'false');
+    sessionStorage.setItem('badminton_isRef', 'false');
+    sessionStorage.removeItem('badminton_refPitch');
     this.onUpdate();
     
-    const notification = this.lang === 'vi' ? 'Đã đăng xuất quyền Admin' : 'Logged out from Admin Mode';
+    const notification = this.lang === 'vi' ? 'Đã đăng xuất tài khoản!' : 'Logged out successfully!';
     this.showToast(notification, 'info');
   }
 
@@ -70,8 +116,10 @@ export class AdminPanel {
     const container = document.getElementById('admin-modal-container');
     if (!container) return;
 
-    const title = this.lang === 'vi' ? 'Đăng Nhập Admin' : 'Admin Login';
-    const desc = this.lang === 'vi' ? 'Nhập mã truy cập để kích hoạt quyền nhập điểm:' : 'Enter passkey to enable score reporting:';
+    const title = this.lang === 'vi' ? 'Đăng Nhập Cổng Điều Hợp' : 'Portal Login';
+    const desc = this.lang === 'vi' 
+      ? 'Nhập mã truy cập Admin hoặc mã Trọng tài (e.g. ref15, ref16...):' 
+      : 'Enter Admin or Umpire passkey (e.g., ref15, ref16, admin2026):';
     const labelPass = this.lang === 'vi' ? 'Mã bảo mật' : 'Passkey';
     const btnLogin = this.lang === 'vi' ? 'Đăng Nhập' : 'Login';
     const btnCancel = this.lang === 'vi' ? 'Hủy' : 'Cancel';
@@ -109,13 +157,32 @@ export class AdminPanel {
     const errorDiv = document.getElementById('admin-login-error');
     if (!input || !errorDiv) return;
     
-    if (input.value === this.passkey) {
-      this.isAdmin = true;
-      sessionStorage.setItem('badminton_isAdmin', 'true');
+    const key = input.value;
+    const auth = this.passkeys[key];
+    
+    if (auth) {
+      if (auth.role === 'admin') {
+        this.isAdmin = true;
+        this.isRef = false;
+        this.refPitch = '';
+        sessionStorage.setItem('badminton_isAdmin', 'true');
+        sessionStorage.setItem('badminton_isRef', 'false');
+        sessionStorage.removeItem('badminton_refPitch');
+      } else {
+        this.isRef = true;
+        this.isAdmin = false;
+        this.refPitch = auth.pitch;
+        sessionStorage.setItem('badminton_isAdmin', 'false');
+        sessionStorage.setItem('badminton_isRef', 'true');
+        sessionStorage.setItem('badminton_refPitch', auth.pitch);
+      }
+      
       document.getElementById('admin-modal-container').classList.add('hidden');
       this.onUpdate();
       
-      const text = this.lang === 'vi' ? 'Đăng nhập thành công! Quyền chỉnh sửa điểm đã mở.' : 'Login success! Admin score editor activated.';
+      const text = this.lang === 'vi' 
+        ? `Đăng nhập thành công! Quyền: ${auth.label}.` 
+        : `Login success! Role: ${auth.label}.`;
       this.showToast(text, 'success');
     } else {
       errorDiv.textContent = this.lang === 'vi' ? 'Mã bảo mật không đúng. Hãy thử lại.' : 'Incorrect passkey. Please try again.';

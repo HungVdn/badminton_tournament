@@ -2,6 +2,7 @@ import { TournamentState } from './state.js';
 import { AdminPanel } from './admin.js';
 import { CourtSimulator } from './court-simulator.js';
 import { REGULATIONS_DATA } from './data.js';
+import { TournamentSync } from './sync.js';
 
 class ConfettiShower {
   constructor() {
@@ -106,9 +107,12 @@ class BadmintonApp {
     this.fixtureStatusFilter = 'all';
     this.confetti = new ConfettiShower();
     this.countdownTimer = null;
+    this.activeSpectateMatchId = null;
+    this.demoInterval = null;
     
     // Core controllers
-    this.admin = new AdminPanel(this.state, () => this.handleStateChange());
+    this.sync = new TournamentSync(this.state, (type, data) => this.handleSyncUpdate(type, data));
+    this.admin = new AdminPanel(this.state, () => this.handleStateChange(), this.sync);
     this.courtSimulator = null;
 
     this.state.addListener(() => this.handleStateChange());
@@ -120,6 +124,12 @@ class BadmintonApp {
     this.setupDOM();
     this.setupEventListeners();
     this.admin.setLanguage(this.lang);
+
+    // Auto-activate demo simulation if it was active
+    if (localStorage.getItem('badminton_demo_mock_active') === 'true') {
+      this.startDemoSimulation();
+    }
+
     this.renderActiveView();
     this.updateNavbar();
     setTimeout(() => this.updateActivePill(), 100);
@@ -169,6 +179,22 @@ class BadmintonApp {
         }
       });
     }
+
+    // Live Center event delegation
+    document.body.addEventListener('change', (e) => {
+      const mockSwitch = e.target.closest('#demo-mock-switch');
+      if (mockSwitch) {
+        this.toggleDemoSimulation(mockSwitch.checked);
+      }
+    });
+
+    document.body.addEventListener('click', (e) => {
+      const spectateBtn = e.target.closest('.btn-spectate-match');
+      if (spectateBtn) {
+        const matchId = spectateBtn.getAttribute('data-match-id');
+        this.openSpectateOverlay(matchId);
+      }
+    });
   }
 
   handleStateChange() {
@@ -389,6 +415,31 @@ class BadmintonApp {
             <div class="progress-fill glow-purple" style="width: 100%"></div>
           </div>
           <div class="text-right text-xs text-purple font-bold mt-1">Men's & Mixed Doubles</div>
+        </div>
+      </div>
+
+      <!-- Live Stadium Center Card -->
+      <div class="glass-card mb-6 border border-slate-800">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-3 mb-4 flex-wrap gap-2">
+          <h3 class="m-0 flex items-center gap-2">
+            <span class="live-dot pulse-red"></span>
+            <span class="text-glow-volt font-black uppercase text-xs" style="letter-spacing: 0.05em;">
+              ${isVi ? '🔴 TRUNG TÂM SÂN ĐẤU LIVE' : '🔴 LIVE COURT TRACKER'}
+            </span>
+          </h3>
+          
+          <!-- Simulation switcher -->
+          <div class="flex items-center gap-2.5 bg-slate-900/70 px-3 py-1.5 rounded border border-slate-800 text-4xs">
+            <span class="font-bold text-slate-400">🤖 ${isVi ? 'MÔ PHỎNG LIVE DEMO' : 'LIVE DEMO MOCK'}</span>
+            <label class="demo-switch-toggle" style="position: relative; display: inline-block; width: 34px; height: 18px;">
+              <input type="checkbox" id="demo-mock-switch" style="opacity: 0; width: 0; height: 0;" ${localStorage.getItem('badminton_demo_mock_active') === 'true' ? 'checked' : ''}>
+              <span class="demo-switch-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .3s; border-radius: 34px; border: 1px solid rgba(255,255,255,0.05);"></span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          ${this.renderLivePitches()}
         </div>
       </div>
 
@@ -778,7 +829,11 @@ class BadmintonApp {
       return `<div class="col-span-2 text-center text-muted py-6">${isVi ? 'Không tìm thấy trận đấu nào' : 'No matches found'}</div>`;
     }
 
+    const liveMatches = this.sync.getLiveMatches();
+
     return matches.map(match => {
+      const liveData = liveMatches[match.id];
+      const isLive = !!liveData;
       const isCompleted = match.status === 'Completed';
       
       const hasPlaceholders = (match.team1 && (match.team1.includes('Place') || match.team1.includes('Winner') || match.team1.includes('Loser'))) ||
@@ -788,7 +843,14 @@ class BadmintonApp {
       let highlightClass = '';
       let statusBadge = '';
       
-      if (match.stage === 'Grand Final') {
+      if (isLive) {
+        highlightClass = 'border-glow-volt bg-volt-gradient';
+        statusBadge = `
+          <span class="match-badge flex items-center gap-1 font-extrabold" style="background-color: var(--danger); color: #fff; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);">
+            <span class="live-dot-pulse"></span> ${isVi ? 'ĐANG ĐẤU' : 'LIVE'}
+          </span>
+        `;
+      } else if (match.stage === 'Grand Final') {
         highlightClass = 'border-glow-gold bg-gold-gradient';
         statusBadge = isCompleted 
           ? `<span class="match-badge flex items-center gap-1 font-extrabold" style="background-color: var(--gold); color: #000; box-shadow: 0 0 8px rgba(245, 158, 11, 0.45);"><svg class="w-3 h-3" stroke="currentColor" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0; width: 12px; height: 12px;"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"/><path d="M12 2a6 6 0 0 1 6 6v3a6 6 0 0 1-6 6h0a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"/></svg>${isVi ? 'CHUNG KẾT' : 'GRAND FINAL'}</span>`
@@ -805,14 +867,6 @@ class BadmintonApp {
           : `<span class="match-badge scheduled">${isVi ? 'LỊCH HẸN' : 'SCHEDULED'}</span>`;
       }
 
-      const editBtn = this.admin.isAdmin
-        ? `<button class="btn btn-xs btn-outline glow-cyan btn-edit-match flex items-center gap-1.5 ${hasPlaceholders ? 'disabled-btn' : ''}" 
-                    data-match-id="${match.id}" 
-                    ${hasPlaceholders ? 'disabled style="opacity: 0.4; pointer-events: none; cursor: not-allowed; border-color: rgba(255,255,255,0.05); color: var(--text-muted);"' : ''}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle; flex-shrink: 0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z"/></svg> <span>${hasPlaceholders ? (isVi ? 'Khóa' : 'Locked') : (isVi ? 'Nhập Điểm' : 'Edit Score')}</span>
-           </button>`
-        : '';
-
       const isMD = match.category === "Men's Doubles";
       const catBadge = isMD
         ? `<span class="badge bg-volt text-slate-950 font-bold text-2xs mr-2">MD</span>`
@@ -828,20 +882,25 @@ class BadmintonApp {
 
       let t1ScoresHtml = '';
       let t2ScoresHtml = '';
-      if (isCompleted && match.sets && match.sets.length > 0) {
-        const dot1 = match.winner === match.team1 ? `<span class="${winnerColorClass}" style="font-size: 0.55rem; width: 8px;">●</span>` : '<span style="width: 8px;"></span>';
-        const dot2 = match.winner === match.team2 ? `<span class="${winnerColorClass}" style="font-size: 0.55rem; width: 8px;">●</span>` : '<span style="width: 8px;"></span>';
+      
+      const renderSets = isCompleted ? match.sets : (isLive ? liveData.sets : []);
+      const displayScore1 = isCompleted ? match.score1 : (isLive ? liveData.score1 : '-');
+      const displayScore2 = isCompleted ? match.score2 : (isLive ? liveData.score2 : '-');
+
+      if ((isCompleted || isLive) && renderSets && renderSets.length > 0) {
+        const dot1 = isCompleted && match.winner === match.team1 ? `<span class="${winnerColorClass}" style="font-size: 0.55rem; width: 8px;">●</span>` : '<span style="width: 8px;"></span>';
+        const dot2 = isCompleted && match.winner === match.team2 ? `<span class="${winnerColorClass}" style="font-size: 0.55rem; width: 8px;">●</span>` : '<span style="width: 8px;"></span>';
         
         t1ScoresHtml += dot1;
         t2ScoresHtml += dot2;
         
-        match.sets.forEach(s => {
+        renderSets.forEach(s => {
           t1ScoresHtml += `<span class="${s.t1 > s.t2 ? winnerColorClass : 'text-slate-400'}" style="width: 22px; display: inline-block; text-align: center;">${s.t1}</span>`;
           t2ScoresHtml += `<span class="${s.t2 > s.t1 ? winnerColorClass : 'text-slate-400'}" style="width: 22px; display: inline-block; text-align: center;">${s.t2}</span>`;
         });
         
         // Pad to 3 sets to keep visual alignment consistent
-        for (let i = match.sets.length; i < 3; i++) {
+        for (let i = renderSets.length; i < 3; i++) {
           t1ScoresHtml += '<span class="text-slate-700" style="width: 22px; display: inline-block; text-align: center;">-</span>';
           t2ScoresHtml += '<span class="text-slate-700" style="width: 22px; display: inline-block; text-align: center;">-</span>';
         }
@@ -849,6 +908,53 @@ class BadmintonApp {
         // Scheduled
         t1ScoresHtml = '<span style="width: 8px;"></span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span>';
         t2ScoresHtml = '<span style="width: 8px;"></span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span>';
+      }
+
+      // Actions Footer
+      const isRefAuthorized = this.admin.isAdmin || (this.admin.isRef && match.pitch === this.admin.refPitch);
+      let actionFooter = '';
+      
+      if (isLive) {
+        actionFooter = `
+          <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-800/80 gap-2">
+            <button class="btn btn-xs btn-outline btn-spectate-match flex items-center gap-1" data-match-id="${match.id}">
+              🔍 <span>${isVi ? 'Xem Live' : 'Spectate'}</span>
+            </button>
+            ${isRefAuthorized ? `
+              <button class="btn btn-xs btn-outline btn-join-match flex items-center gap-1" style="border-color: var(--volt); color: var(--volt);" data-match-id="${match.id}">
+                Umpire <span>${isVi ? 'Vào Sân' : 'Join'}</span>
+              </button>
+            ` : ''}
+          </div>
+        `;
+      } else if (isCompleted) {
+        actionFooter = this.admin.isAdmin ? `
+          <div class="flex justify-end mt-3 pt-2.5 border-t border-slate-800/80">
+            <button class="btn btn-xs btn-outline btn-edit-match flex items-center gap-1" data-match-id="${match.id}">
+              ✏️ <span>${isVi ? 'Sửa Điểm' : 'Edit Score'}</span>
+            </button>
+          </div>
+        ` : '';
+      } else {
+        actionFooter = `
+          <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-800/80 gap-2">
+            <div>
+              <span class="text-5xs text-slate-500 font-bold uppercase tracking-wider">${isVi ? 'CHỜ ĐẤU' : 'AWAITING'}</span>
+            </div>
+            <div class="flex gap-2">
+              ${isRefAuthorized ? `
+                <button class="btn btn-xs btn-outline btn-join-match flex items-center gap-1" style="border-color: var(--volt); color: var(--volt);" data-match-id="${match.id}">
+                  🏸 <span>${isVi ? 'Khai Mạc' : 'Umpire'}</span>
+                </button>
+              ` : ''}
+              ${this.admin.isAdmin ? `
+                <button class="btn btn-xs btn-outline btn-edit-match flex items-center gap-1" data-match-id="${match.id}">
+                  ✏️ <span>${isVi ? 'Nhập Điểm' : 'Direct'}</span>
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
       }
 
       const adminCardClass = this.admin.isAdmin ? 'admin-card' : '';
@@ -868,7 +974,7 @@ class BadmintonApp {
             <!-- Team 1 Row -->
             <div class="flex items-center justify-between">
               <div class="flex flex-col min-w-0 pr-2">
-                <span class="text-sm font-bold ${isCompleted && match.winner === match.team1 ? winnerColorClass : 'text-slate-200'} truncate" title="${match.team1}">
+                <span class="text-sm font-bold ${(isCompleted && match.winner === match.team1) || (isLive && displayScore1 > displayScore2) ? winnerColorClass : 'text-slate-200'} truncate" title="${match.team1}">
                   ${match.team1}
                 </span>
                 <span class="text-4xs text-slate-500 font-normal mt-0.5 truncate" title="${team1Players || (isVi ? 'Đang xác định' : 'TBD')}">${team1Players || (isVi ? 'Đang xác định' : 'TBD')}</span>
@@ -881,7 +987,7 @@ class BadmintonApp {
             <!-- Team 2 Row -->
             <div class="flex items-center justify-between">
               <div class="flex flex-col min-w-0 pr-2">
-                <span class="text-sm font-bold ${isCompleted && match.winner === match.team2 ? winnerColorClass : 'text-slate-200'} truncate" title="${match.team2}">
+                <span class="text-sm font-bold ${(isCompleted && match.winner === match.team2) || (isLive && displayScore2 > displayScore1) ? winnerColorClass : 'text-slate-200'} truncate" title="${match.team2}">
                   ${match.team2}
                 </span>
                 <span class="text-4xs text-slate-500 font-normal mt-0.5 truncate" title="${team2Players || (isVi ? 'Đang xác định' : 'TBD')}">${team2Players || (isVi ? 'Đang xác định' : 'TBD')}</span>
@@ -892,8 +998,8 @@ class BadmintonApp {
             </div>
           </div>
 
-          <!-- Edit Button Footer (If Admin) -->
-          ${editBtn ? `<div class="flex justify-end mt-1 pt-2 border-t border-slate-900/50">${editBtn}</div>` : ''}
+          <!-- Action Footer -->
+          ${actionFooter}
         </div>
       `;
     }).join('');
@@ -1601,9 +1707,562 @@ class BadmintonApp {
       cdSecs.textContent = seconds.toString().padStart(2, '0');
     };
 
-    // Run immediately once to avoid visual delay
     updateTimer();
     this.countdownTimer = setInterval(updateTimer, 1000);
+  }
+
+  handleSyncUpdate(type, data) {
+    // Re-render active view to capture live score overlays instantly
+    this.renderActiveView();
+
+    // Sync mock toggles
+    if (type === 'MOCK_TOGGLE') {
+      const slider = document.getElementById('demo-mock-switch');
+      if (slider) slider.checked = data.enabled;
+      if (data.enabled) {
+        this.startDemoSimulation(true);
+      } else {
+        this.stopDemoSimulation(true);
+      }
+    }
+
+    // Update active spectate overlay
+    if (this.activeSpectateMatchId && data && data.matchId === this.activeSpectateMatchId) {
+      if (type === 'STATUS_UPDATE' && !data.isLive) {
+        alert(this.lang === 'vi' ? 'Trận đấu đang xem đã kết thúc!' : 'The match you are spectating has concluded!');
+        const container = document.getElementById('spectate-overlay-container');
+        if (container) {
+          container.classList.add('hidden');
+          container.innerHTML = '';
+        }
+        this.activeSpectateMatchId = null;
+      } else {
+        this.renderSpectateOverlay(this.activeSpectateMatchId);
+      }
+    }
+  }
+
+  toggleDemoSimulation(enabled) {
+    if (enabled) {
+      localStorage.setItem('badminton_demo_mock_active', 'true');
+      this.startDemoSimulation();
+      this.admin.showToast(this.lang === 'vi' ? 'Đã kích hoạt chế độ Live Demo!' : 'Live Demo Simulation activated!', 'success');
+    } else {
+      localStorage.removeItem('badminton_demo_mock_active');
+      this.stopDemoSimulation();
+      this.admin.showToast(this.lang === 'vi' ? 'Đã tắt chế độ Live Demo!' : 'Live Demo Simulation stopped!', 'info');
+    }
+    
+    // Broadcast toggle status to other tabs
+    this.sync.broadcast('LIVE_MOCK_TOGGLE', { enabled });
+  }
+
+  startDemoSimulation(silent = false) {
+    this.stopDemoSimulation(true);
+    
+    this.demoInterval = setInterval(() => {
+      this.stepDemoSimulation();
+    }, 4500);
+  }
+
+  stopDemoSimulation(silent = false) {
+    if (this.demoInterval) {
+      clearInterval(this.demoInterval);
+      this.demoInterval = null;
+    }
+    
+    // Clean up any lingering live matches to restore scheduled states
+    const liveMatches = this.sync.getLiveMatches();
+    Object.keys(liveMatches).forEach(matchId => {
+      this.sync.setMatchLiveStatus(matchId, false);
+      const match = this.state.matches.find(m => m.id === matchId);
+      if (match && match.status === 'Live') {
+        match.status = 'Scheduled';
+      }
+    });
+    
+    this.renderActiveView();
+  }
+
+  stepDemoSimulation() {
+    const liveMatches = this.sync.getLiveMatches();
+    const liveKeys = Object.keys(liveMatches);
+
+    // 1. If we have live matches in progress, randomly choose one to increment
+    if (liveKeys.length > 0) {
+      const matchId = liveKeys[Math.floor(Math.random() * liveKeys.length)];
+      const matchData = liveMatches[matchId];
+      
+      const s1Idx = matchData.sets.length - 1;
+      const setScores = matchData.sets[s1Idx] || { t1: 0, t2: 0 };
+      
+      const isT1Point = Math.random() > 0.48;
+      let s1 = setScores.t1;
+      let s2 = setScores.t2;
+
+      if (isT1Point) {
+        if (matchData.servingTeam === 'A') {
+          // Serve hold: swap players
+          const temp = matchData.serverName;
+          matchData.serverName = matchData.partnerName;
+          matchData.partnerName = temp;
+        }
+        s1++;
+        matchData.servingTeam = 'A';
+      } else {
+        if (matchData.servingTeam === 'B') {
+          const temp = matchData.receiverName;
+          matchData.receiverName = matchData.receiverPartnerName;
+          matchData.receiverPartnerName = temp;
+        }
+        s2++;
+        matchData.servingTeam = 'B';
+      }
+
+      matchData.sets[s1Idx] = { t1: s1, t2: s2 };
+      matchData.score1 = s1;
+      matchData.score2 = s2;
+      
+      const scoreToCheck = matchData.servingTeam === 'A' ? s1 : s2;
+      matchData.isEven = scoreToCheck % 2 === 0;
+
+      // Swap receiver to match server diagonal
+      const liveMatchObj = this.state.matches.find(m => m.id === matchId);
+      const team1Obj = this.state.teams.find(t => t.name === liveMatchObj.team1);
+      const team2Obj = this.state.teams.find(t => t.name === liveMatchObj.team2);
+      const t1Players = team1Obj ? [team1Obj.player1, team1Obj.player2] : ["T1 P1", "T1 P2"];
+      const t2Players = team2Obj ? [team2Obj.player1, team2Obj.player2] : ["T2 P1", "T2 P2"];
+
+      // Setup receivers to align diagonals
+      if (matchData.servingTeam === 'A') {
+        matchData.receiverName = matchData.isEven ? t2Players[0] : t2Players[1];
+        matchData.receiverPartnerName = matchData.isEven ? t2Players[1] : t2Players[0];
+      } else {
+        matchData.receiverName = matchData.isEven ? t1Players[0] : t1Players[1];
+        matchData.receiverPartnerName = matchData.isEven ? t1Players[1] : t1Players[0];
+      }
+
+      // Check win set BWF Rules
+      const targetPoints = matchId.includes('SF') || matchId.includes('F-') || matchId.includes('B-') ? 21 : 15;
+      const maxPoints = targetPoints === 15 ? 21 : 30;
+      const maxVal = Math.max(s1, s2);
+      const minVal = Math.min(s1, s2);
+      const diff = maxVal - minVal;
+
+      let isSetWon = false;
+      if (maxVal >= targetPoints && (diff >= 2 || maxVal === maxPoints)) {
+        isSetWon = true;
+      }
+
+      if (isSetWon) {
+        // Record final set
+        matchData.sets[s1Idx] = { t1: s1, t2: s2 };
+        
+        let t1SetsWon = 0;
+        let t2SetsWon = 0;
+        matchData.sets.forEach(s => {
+          if (s.t1 > s.t2) t1SetsWon++;
+          else t2SetsWon++;
+        });
+
+        if (t1SetsWon === 2 || t2SetsWon === 2) {
+          // Match Completed!
+          this.sync.broadcast('LIVE_MATCH_END', { matchId });
+          this.sync.setMatchLiveStatus(matchId, false);
+          
+          const match = this.state.matches.find(m => m.id === matchId);
+          if (match) {
+            this.state.updateMatchScore(matchId, matchData.sets, t1SetsWon, t2SetsWon, 'Completed');
+          }
+          return;
+        } else {
+          // Push Set 2/3
+          matchData.sets.push({ t1: 0, t2: 0 });
+          matchData.score1 = 0;
+          matchData.score2 = 0;
+          matchData.currentSet++;
+          matchData.servingTeam = s1 > s2 ? 'A' : 'B';
+        }
+      }
+
+      // Broadcast score updates to public displays
+      this.sync.broadcast('LIVE_SCORE_UPDATE', {
+        matchId,
+        sets: matchData.sets,
+        score1: matchData.score1,
+        score2: matchData.score2,
+        currentSet: matchData.currentSet,
+        servingTeam: matchData.servingTeam,
+        isEven: matchData.isEven,
+        serverName: matchData.serverName,
+        partnerName: matchData.partnerName,
+        receiverName: matchData.receiverName,
+        receiverPartnerName: matchData.receiverPartnerName
+      });
+
+    } else {
+      // 2. If no active live matches, find first scheduled and start it live!
+      const scheduledMatch = this.state.matches.find(m => m.status === 'Scheduled' && !m.team1.includes('Winner') && !m.team2.includes('Winner') && !m.team1.includes('Loser') && !m.team2.includes('Loser'));
+      if (scheduledMatch) {
+        const team1Obj = this.state.teams.find(t => t.name === scheduledMatch.team1);
+        const team2Obj = this.state.teams.find(t => t.name === scheduledMatch.team2);
+        const t1Players = team1Obj ? [team1Obj.player1, team1Obj.player2] : ["T1 P1", "T1 P2"];
+        const t2Players = team2Obj ? [team2Obj.player1, team2Obj.player2] : ["T2 P1", "T2 P2"];
+
+        const matchState = {
+          sets: [{ t1: 0, t2: 0 }],
+          score1: 0,
+          score2: 0,
+          currentSet: 1,
+          servingTeam: 'A',
+          isEven: true,
+          serverName: t1Players[0],
+          partnerName: t1Players[1],
+          receiverName: t2Players[0],
+          receiverPartnerName: t2Players[1]
+        };
+
+        this.sync.broadcast('LIVE_MATCH_START', {
+          matchId: scheduledMatch.id,
+          matchState
+        });
+        this.sync.setMatchLiveStatus(scheduledMatch.id, true, matchState);
+      }
+    }
+  }
+
+  renderLivePitches() {
+    const isVi = this.lang === 'vi';
+    const pitches = ["Pitch 15", "Pitch 16", "Pitch 20", "Pitch 21"];
+    const liveMatches = this.sync.getLiveMatches();
+
+    return pitches.map(pitch => {
+      // Find if there is an active live match on this pitch
+      const liveMatchId = Object.keys(liveMatches).find(id => {
+        const match = this.state.matches.find(m => m.id === id);
+        return match && match.pitch === pitch;
+      });
+
+      if (liveMatchId) {
+        const live = liveMatches[liveMatchId];
+        const match = this.state.matches.find(m => m.id === liveMatchId);
+        const isMD = match.category === "Men's Doubles";
+        const catColor = isMD ? 'text-volt border-glow-volt' : 'text-cyan border-glow-cyan';
+
+        const isRefAuthorized = this.admin.isAdmin || (this.admin.isRef && match.pitch === this.admin.refPitch);
+
+        return `
+          <div class="live-pitch-card glass-panel border border-red-500/30 p-3 rounded-lg hover-glowing bg-red-950/5 flex flex-col justify-between">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
+              <span class="font-extrabold text-volt text-4xs">${pitch}</span>
+              <span class="badge bg-danger pulse-dot flex items-center gap-1 font-bold text-5xs">
+                <span class="live-dot"></span> LIVE
+              </span>
+            </div>
+            
+            <div class="text-center py-1">
+              <div class="text-4xs font-bold text-slate-400 mb-0.5 truncate" title="${match.team1}">${match.team1}</div>
+              <div class="text-xs font-mono font-black text-slate-100 flex items-center justify-center gap-2">
+                <span class="${live.servingTeam === 'A' ? 'text-glow-volt' : ''}">${live.score1}</span>
+                <span class="text-slate-600 text-3xs">vs</span>
+                <span class="${live.servingTeam === 'B' ? 'text-glow-cyan' : ''}">${live.score2}</span>
+              </div>
+              <div class="text-4xs font-bold text-slate-400 mt-0.5 truncate" title="${match.team2}">${match.team2}</div>
+            </div>
+            
+            <div class="text-5xs text-center text-slate-500 font-semibold mb-2">
+              Set ${live.currentSet} | serve: ${live.servingTeam === 'A' ? 'T1' : 'T2'}
+            </div>
+
+            <div class="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+              <button class="btn btn-2xs btn-outline btn-spectate-match flex-1 font-bold" data-match-id="${match.id}">
+                🔍 ${isVi ? 'Xem Live' : 'Spectate'}
+              </button>
+              ${isRefAuthorized ? `
+                <button class="btn btn-2xs btn-outline btn-join-match font-bold" style="border-color: var(--volt); color: var(--volt);" data-match-id="${match.id}">
+                  🏸 Ump
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      // No live match. Look for NEXT scheduled match on this pitch
+      const nextMatch = this.state.matches.find(m => m.pitch === pitch && m.status === 'Scheduled' && !m.team1.includes('Winner') && !m.team2.includes('Winner'));
+      const isRefAuthorized = this.admin.isAdmin || (this.admin.isRef && pitch === this.admin.refPitch);
+
+      if (nextMatch) {
+        return `
+          <div class="live-pitch-card glass-panel border border-slate-800 p-3 rounded-lg flex flex-col justify-between" style="opacity: 0.8;">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
+              <span class="font-extrabold text-slate-400 text-4xs">${pitch}</span>
+              <span class="badge bg-slate-800 text-slate-500 font-bold text-5xs">${nextMatch.time}</span>
+            </div>
+            
+            <div class="text-center py-2">
+              <div class="text-5xs text-muted truncate" title="${nextMatch.team1}">${nextMatch.team1}</div>
+              <div class="text-4xs font-bold text-slate-400 py-0.5">${isVi ? 'ĐỢI TRẬN' : 'SCHEDULED'}</div>
+              <div class="text-5xs text-muted truncate" title="${nextMatch.team2}">${nextMatch.team2}</div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-800/80">
+              ${isRefAuthorized ? `
+                <button class="btn btn-2xs btn-outline btn-join-match btn-block font-bold" style="border-color: var(--volt); color: var(--volt);" data-match-id="${nextMatch.id}">
+                  🏸 ${isVi ? 'Khai Mạc Trận' : 'Start Match'}
+                </button>
+              ` : `
+                <div class="text-center text-5xs text-slate-600 font-semibold py-1">💤 ${isVi ? 'Chờ thi đấu' : 'Awaiting start'}</div>
+              `}
+            </div>
+          </div>
+        `;
+      }
+
+      // Court completely empty
+      return `
+        <div class="live-pitch-card glass-panel border border-slate-900 p-3 rounded-lg flex flex-col justify-center items-center" style="opacity: 0.55; min-height: 125px;">
+          <span class="text-lg">💤</span>
+          <span class="font-extrabold text-slate-400 text-4xs mt-1.5">${pitch}</span>
+          <span class="text-5xs text-slate-600 font-semibold mt-0.5">${isVi ? 'Sân đang trống' : 'Court Empty'}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  openSpectateOverlay(matchId) {
+    if (document.getElementById('umpire-overlay-container') && !document.getElementById('umpire-overlay-container').classList.contains('hidden')) {
+      alert(this.lang === 'vi' ? 'Bạn đang ở trong phòng Trọng tài. Hãy thoát phòng Trọng tài trước!' : 'You are in the Umpire Control room. Please exit Umpire mode first!');
+      return;
+    }
+
+    this.activeSpectateMatchId = matchId;
+    
+    if (!document.getElementById('spectate-overlay-container')) {
+      const overlay = document.createElement('div');
+      overlay.id = 'spectate-overlay-container';
+      overlay.className = 'umpire-overlay-backdrop';
+      document.body.appendChild(overlay);
+    }
+
+    this.renderSpectateOverlay(matchId);
+    
+    // Play initial serve animation
+    setTimeout(() => {
+      const shuttle = document.querySelector('.spectate-court-svg .svg-shuttle');
+      if (shuttle) {
+        shuttle.setAttribute('dur', '0.7s');
+        shuttle.innerHTML = `
+          <animateMotion dur="0.7s" repeatCount="1" fill="freeze">
+            <mpath href="#spectate-shuttle-path" />
+          </animateMotion>
+        `;
+      }
+    }, 100);
+  }
+
+  renderSpectateOverlay(matchId) {
+    const container = document.getElementById('spectate-overlay-container');
+    if (!container) return;
+
+    container.classList.remove('hidden');
+
+    const isVi = this.lang === 'vi';
+    const match = this.state.matches.find(m => m.id === matchId);
+    const liveMatches = this.sync.getLiveMatches();
+    const live = liveMatches[matchId];
+
+    if (!live || !match) {
+      container.classList.add('hidden');
+      this.activeSpectateMatchId = null;
+      return;
+    }
+
+    const isEven = live.isEven;
+    const isMD = match.category === "Men's Doubles";
+    const headerColor = isMD ? 'text-volt' : 'text-cyan';
+
+    // SVG coordinates setup mapping:
+    const serverX = live.servingTeam === 'A' ? (isEven ? 210 : 90) : (isEven ? 90 : 210);
+    const serverY = live.servingTeam === 'A' ? 385 : 115;
+    
+    const partnerX = live.servingTeam === 'A' ? (isEven ? 90 : 210) : (isEven ? 210 : 90);
+    const partnerY = live.servingTeam === 'A' ? 440 : 60;
+    
+    const receiverX = live.servingTeam === 'A' ? (isEven ? 90 : 210) : (isEven ? 210 : 90);
+    const receiverY = live.servingTeam === 'A' ? 115 : 385;
+    
+    const receiverPartnerX = live.servingTeam === 'A' ? (isEven ? 210 : 90) : (isEven ? 90 : 210);
+    const receiverPartnerY = live.servingTeam === 'A' ? 60 : 440;
+
+    const serverBoxHighlight = live.servingTeam === 'A'
+      ? (isEven ? `M 150,310 L 280,310 L 280,440 L 150,440 Z` : `M 20,310 L 150,310 L 150,440 L 20,440 Z`)
+      : (isEven ? `M 20,60 L 150,60 L 150,190 L 20,190 Z` : `M 150,60 L 280,60 L 280,190 L 150,190 Z`);
+
+    const receiverBoxHighlight = live.servingTeam === 'A'
+      ? (isEven ? `M 20,60 L 150,60 L 150,190 L 20,190 Z` : `M 150,60 L 280,60 L 280,190 L 150,190 Z`)
+      : (isEven ? `M 150,310 L 280,310 L 280,440 L 150,440 Z` : `M 20,310 L 150,310 L 150,440 L 20,440 Z`);
+
+    const cpX = (serverX + receiverX) / 2 + 30;
+    const cpY = (serverY + receiverY) / 2 - 40;
+
+    const setsDisplay = live.sets.map((s, idx) => `
+      <div class="umpire-set-badge">
+        <span>Set ${idx + 1}:</span>
+        <strong>${s.t1} - ${s.t2}</strong>
+      </div>
+    `).join('');
+
+    container.innerHTML = `
+      <div class="umpire-card glass-card spectate-stadium">
+        <!-- Header -->
+        <div class="umpire-header flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+          <div class="flex items-center gap-3">
+            <span class="badge bg-danger pulse-dot flex items-center gap-1.5 font-bold">
+              <span class="live-dot"></span> LIVE SPECTATING
+            </span>
+            <span class="text-xs font-bold text-slate-300">${match.pitch} | ${match.stage}</span>
+          </div>
+          <h2 class="text-sm font-black m-0 text-glow-volt">${isVi ? 'SÂN VẬN ĐỘNG TRỰC TUYẾN' : 'LIVE STADIUM SCREEN'}</h2>
+          <button class="btn btn-xs btn-neutral" id="spectate-btn-close">✕ ${isVi ? 'Thoát Xem' : 'Exit'}</button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <!-- Spectator Scoreboard Column (Grid Span 7) -->
+          <div class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- Historic sets display -->
+            <div class="flex items-center gap-3 justify-center mb-1">
+              ${setsDisplay}
+              <div class="umpire-set-badge current">
+                <span>Set ${live.currentSet}:</span>
+                <strong class="text-volt">${live.score1} - ${live.score2}</strong>
+              </div>
+            </div>
+
+            <!-- Big Glowing Score Pads (Read-only for Spectators) -->
+            <div class="grid grid-cols-2 gap-6 text-center">
+              <div class="bg-slate-950/60 p-6 rounded-xl border border-slate-900 relative">
+                <div class="text-2xs font-extrabold truncate text-volt mb-3" title="${match.team1}">
+                  ${match.team1}
+                </div>
+                <div class="font-mono font-black text-6xl text-glow-volt py-4">${live.score1}</div>
+                ${live.servingTeam === 'A' ? `
+                  <span class="absolute top-3 right-3 text-volt animate-bounce" style="font-size: 0.95rem;">🏸 Serve</span>
+                ` : ''}
+              </div>
+
+              <div class="bg-slate-950/60 p-6 rounded-xl border border-slate-900 relative">
+                <div class="text-2xs font-extrabold truncate text-cyan mb-3" title="${match.team2}">
+                  ${match.team2}
+                </div>
+                <div class="font-mono font-black text-6xl text-glow-cyan py-4">${live.score2}</div>
+                ${live.servingTeam === 'B' ? `
+                  <span class="absolute top-3 right-3 text-cyan animate-bounce" style="font-size: 0.95rem;">🏸 Serve</span>
+                ` : ''}
+              </div>
+            </div>
+
+            <div class="bg-slate-900/40 p-4 rounded border border-slate-800 text-center text-4xs text-slate-500 font-semibold leading-relaxed">
+              📣 ${isVi 
+                ? 'Màn hình trực tiếp tự động đồng bộ kết quả từ Bàn Trọng Tài thông qua kênh liên lạc BroadcastChannel độ trễ bằng không.' 
+                : 'Spectator display updates automatically in real-time as the referee enters scores on their device.'}
+            </div>
+          </div>
+
+          <!-- Spectator Court Simulator Column (Grid Span 5) -->
+          <div class="lg:col-span-5 flex flex-col items-center gap-4 bg-slate-950/45 p-4 rounded-lg border border-slate-900/60">
+            <h4 class="text-5xs font-bold uppercase tracking-widest text-slate-500 m-0">${isVi ? 'MÔ PHỎNG VỊ TRÍ VẬN ĐỘNG VIÊN' : 'LIVE COURT VISUALIZER'}</h4>
+            <div style="width: 100%; max-width: 250px; aspect-ratio: 3/5;">
+              <svg class="court-svg spectate-court-svg" viewBox="0 0 300 500" width="100%" height="100%">
+                <defs>
+                  <filter id="spec-glow-volt" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="6" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  <filter id="spec-glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="6" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                <!-- boundaries -->
+                <rect x="20" y="40" width="260" height="420" class="court-line outer" />
+                <line x1="40" y1="40" x2="40" y2="460" class="court-line singles-side" />
+                <line x1="260" y1="40" x2="260" y2="460" class="court-line singles-side" />
+                <line x1="150" y1="40" x2="150" y2="190" class="court-line center" />
+                <line x1="150" y1="310" x2="150" y2="460" class="court-line center" />
+                <line x1="20" y1="190" x2="280" y2="190" class="court-line service-short" />
+                <line x1="20" y1="310" x2="280" y2="310" class="court-line service-short" />
+                <line x1="20" y1="60" x2="280" y2="60" class="court-line service-long-doubles" />
+                <line x1="20" y1="440" x2="280" y2="440" class="court-line service-long-doubles" />
+                <line x1="10" y1="250" x2="290" y2="250" class="court-line net" />
+                <circle cx="10" cy="250" r="4" class="net-post" />
+                <circle cx="290" cy="250" r="4" class="net-post" />
+
+                <!-- highlights -->
+                <path d="${serverBoxHighlight}" class="svg-highlight-box serving" filter="url(#spec-glow-volt)" />
+                <path d="${receiverBoxHighlight}" class="svg-highlight-box receiving" filter="url(#spec-glow-cyan)" />
+
+                <!-- shuttle flight -->
+                <path id="spectate-shuttle-path" d="M ${serverX},${serverY} Q ${cpX},${cpY} ${receiverX},${receiverY}" class="svg-shuttle-path" />
+                <circle r="5" class="svg-shuttle" filter="url(#spec-glow-cyan)">
+                  <animateMotion dur="0.7s" repeatCount="1" fill="freeze">
+                    <mpath href="#spectate-shuttle-path" />
+                  </animateMotion>
+                </circle>
+
+                <!-- bottom side (Team A) -->
+                <g class="player-avatar ${live.servingTeam === 'A' ? 'server' : 'partner'}">
+                  <circle cx="${live.servingTeam === 'A' ? (isEven ? 210 : 90) : (isEven ? 90 : 210)}" 
+                          cy="385" r="13" class="avatar-bg ${live.servingTeam === 'A' ? 'volt' : 'neutral'}" />
+                  <text x="${live.servingTeam === 'A' ? (isEven ? 210 : 90) : (isEven ? 90 : 210)}" 
+                        y="389" class="avatar-text">${live.servingTeam === 'A' ? 'S' : 'P'}</text>
+                </g>
+                <text x="${isEven ? 210 : 90}" y="415" class="svg-player-name text-slate-200 font-bold">${live.serverName.split(' ')[0]}</text>
+
+                <g class="player-avatar ${live.servingTeam === 'A' ? 'partner' : 'server'}">
+                  <circle cx="${live.servingTeam === 'A' ? (isEven ? 90 : 210) : (isEven ? 210 : 90)}" 
+                          cy="440" r="11" class="avatar-bg neutral" />
+                  <text x="${live.servingTeam === 'A' ? (isEven ? 90 : 210) : (isEven ? 210 : 90)}" 
+                        y="444" class="avatar-text">P</text>
+                </g>
+                <text x="${isEven ? 90 : 210}" y="468" class="svg-player-name text-muted">${live.partnerName.split(' ')[0]}</text>
+
+                <!-- top side (Team B) -->
+                <g class="player-avatar ${live.servingTeam === 'B' ? 'server' : 'receiver'}">
+                  <circle cx="${live.servingTeam === 'B' ? (isEven ? 90 : 210) : (isEven ? 90 : 210)}" 
+                          cy="115" r="13" class="avatar-bg ${live.servingTeam === 'B' ? 'volt' : 'cyan'}" />
+                  <text x="${live.servingTeam === 'B' ? (isEven ? 90 : 210) : (isEven ? 90 : 210)}" 
+                        y="119" class="avatar-text">${live.servingTeam === 'B' ? 'S' : 'R'}</text>
+                </g>
+                <text x="${isEven ? 90 : 210}" y="95" class="svg-player-name text-slate-200 font-bold">${live.receiverName.split(' ')[0]}</text>
+
+                <g class="player-avatar ${live.servingTeam === 'B' ? 'partner' : 'partner'}">
+                  <circle cx="${live.servingTeam === 'B' ? (isEven ? 210 : 90) : (isEven ? 210 : 90)}" 
+                          cy="60" r="11" class="avatar-bg neutral" />
+                  <text x="${live.servingTeam === 'B' ? (isEven ? 210 : 90) : (isEven ? 210 : 90)}" 
+                        y="64" class="avatar-text">P</text>
+                </g>
+                <text x="${isEven ? 210 : 90}" y="42" class="svg-player-name text-muted">${live.receiverPartnerName.split(' ')[0]}</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('spectate-btn-close').onclick = () => {
+      container.classList.add('hidden');
+      container.innerHTML = '';
+      this.activeSpectateMatchId = null;
+    };
   }
 }
 
