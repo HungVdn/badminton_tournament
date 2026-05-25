@@ -1097,23 +1097,29 @@
           </div>
         </div>
       </div>
-    `}renderTeams(s){const t=this.lang==="vi",i=(a,r)=>{const l=r==="Men's Doubles",o=l?"text-volt":"text-cyan",h=this.state.calculateStandings(r),p=a.map(c=>{const g=this.state.matches.filter(S=>S.category===r&&S.status==="Completed"&&(S.team1===c.name||S.team2===c.name));let d=0,m=0,u=0,f=0,y=0,$=0;g.forEach(S=>{const A=S.team1===c.name;S.winner===c.name?d++:m++,A?(u+=Number(S.score1)||0,f+=Number(S.score2)||0):(u+=Number(S.score2)||0,f+=Number(S.score1)||0),S.sets&&Array.isArray(S.sets)&&S.sets.forEach(L=>{const E=Number(L.t1)||0,k=Number(L.t2)||0;A?(y+=E,$+=k):(y+=k,$+=E)})});const T=g.length,w=T>0?Math.round(d/T*100):0,b=u-f,v=y-$,x=d,M=h.findIndex(S=>S.name===c.name),I=M!==-1?M+1:"-",C=g.map(S=>{const A=S.winner===c.name,L=A?"bg-emerald-500/10 text-emerald-400 border border-emerald-500/20":"bg-rose-500/10 text-rose-400 border border-rose-500/20",E=A?"W":"L",k=`${S.stage}: ${S.team1} vs ${S.team2} (${S.score1}-${S.score2})`;return`<span class="flex items-center justify-center rounded-full font-bold font-mono text-5xs cursor-help ${L}" style="width: 14px; height: 14px; font-size: 0.45rem;" title="${k}">${E}</span>`}).join(""),N=C.length>0?C:`<span class="text-slate-500 text-5xs italic font-sans">${t?"Chưa đấu":"No matches"}</span>`;return`
-          <div class="team-profile-card glass-panel border border-slate-700/50 rounded-lg hover-glowing flex flex-col justify-between overflow-hidden relative"
+    `}renderTeams(s){const t=this.lang==="vi",i=(a,r)=>{const l=r==="Men's Doubles",o=l?"text-volt":"text-cyan",h=this.state.calculateStandings(r),p=a.map(c=>{const g=this.state.matches.filter(S=>S.category===r&&S.status==="Completed"&&(S.team1===c.name||S.team2===c.name));let d=0,m=0,u=0,f=0,y=0,$=0;g.forEach(S=>{const P=S.team1===c.name;S.winner===c.name?d++:m++,P?(u+=Number(S.score1)||0,f+=Number(S.score2)||0):(u+=Number(S.score2)||0,f+=Number(S.score1)||0),S.sets&&Array.isArray(S.sets)&&S.sets.forEach(L=>{const E=Number(L.t1)||0,k=Number(L.t2)||0;P?(y+=E,$+=k):(y+=k,$+=E)})});const T=g.length,w=T>0?Math.round(d/T*100):0,b=u-f,v=y-$,x=d,M=h.findIndex(S=>S.name===c.name),I=M!==-1?M+1:"-",C=g.map(S=>{const P=S.winner===c.name,L=P?"bg-emerald-500/10 text-emerald-400 border border-emerald-500/20":"bg-rose-500/10 text-rose-400 border border-rose-500/20",E=P?"W":"L",k=`${S.stage}: ${S.team1} vs ${S.team2} (${S.score1}-${S.score2})`;return`<span class="flex items-center justify-center rounded-full font-bold font-mono text-5xs cursor-help ${L}" style="width: 14px; height: 14px; font-size: 0.45rem;" title="${k}">${E}</span>`}).join(""),N=C.length>0?C:`<span class="text-slate-500 text-5xs italic font-sans">${t?"Chưa đấu":"No matches"}</span>`;return`
+          <div class="team-profile-card ${l?"team-card-md":"team-card-xd"} glass-panel border border-slate-700/50 rounded-lg hover-glowing flex flex-col justify-between overflow-hidden relative"
                style="background: radial-gradient(circle at top right, ${l?"rgba(163, 230, 53, 0.05)":"rgba(34, 211, 238, 0.05)"} 0%, rgba(15, 22, 42, 0.45) 80%);">
             
-            <!-- Team Image Header -->
-            <div class="team-card-image-wrapper relative w-full overflow-hidden border-b border-slate-800/80" style="aspect-ratio: 16/9; background: #07090e;">
-              <img src="/teams/${c.id}.jpg" 
-                   onerror="this.onerror=null; this.src='/teams/${c.id}.png'; this.onerror=function(){ this.style.display='none'; this.parentNode.querySelector('.team-card-image-placeholder').style.display='flex'; }" 
-                   class="w-full h-full object-cover team-card-img" 
-                   style="height: 100%; width: 100%; object-fit: cover;" />
-              <div class="team-card-image-placeholder absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900/60 to-slate-950/90 text-slate-500" style="display: none;">
-                <span style="font-size: 2.25rem; filter: drop-shadow(0 0 8px ${l?"rgba(163, 230, 53, 0.15)":"rgba(34, 211, 238, 0.15)"});">👥</span>
+            <!-- Team Color Banner -->
+            <div class="team-card-banner w-full" style="height: 52px; background: linear-gradient(135deg, ${l?"rgba(163, 230, 53, 0.15)":"rgba(34, 211, 238, 0.15)"} 0%, rgba(15, 22, 42, 0.6) 100%); border-b: 1px solid rgba(255, 255, 255, 0.04);"></div>
+
+            <!-- Team Image Circular Avatar overlapping banner -->
+            <div class="team-card-avatar-wrapper absolute" style="top: 20px; left: 16px; z-index: 10;">
+              <div class="relative w-16 h-16 rounded-full overflow-hidden border-3 border-slate-950 shadow-lg" style="box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 15px ${l?"rgba(163, 230, 53, 0.2)":"rgba(34, 211, 238, 0.2)"};">
+                <img src="/teams/${c.id}.jpg" 
+                     onerror="this.onerror=null; this.src='/teams/${c.id}.png'; this.onerror=function(){ this.style.display='none'; this.parentNode.querySelector('.team-avatar-placeholder').style.display='flex'; }" 
+                     class="w-full h-full object-cover team-card-img" 
+                     style="height: 100%; width: 100%; object-fit: cover;" />
+                <div class="team-avatar-placeholder absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950 text-slate-400" style="display: none;">
+                  <span style="font-size: 1.25rem;">👥</span>
+                </div>
               </div>
             </div>
 
-            <div class="p-4 flex-1 flex flex-col justify-between">
+            <div class="p-4 pt-9 flex-1 flex flex-col justify-between" style="margin-top: 0;">
               <div>
+
                 <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
                   <div class="flex items-center gap-1.5 truncate max-w-[70%]">
                     <span class="font-extrabold text-sm text-slate-100 truncate pr-1" title="${c.name}">${c.name}</span>
@@ -1316,7 +1322,7 @@
           <circle cx="0" cy="0" r="8.5" fill="#090d16" stroke="#84cc16" stroke-width="1.2" />
           <text x="0" y="3.5" font-size="10" text-anchor="middle" font-family="sans-serif">🏸</text>
         </g>
-      `;let w,b,v,x;m===r?(w=210,b=355):m===l?(w=90,b=355):m===o?(w=90,b=145):(w=210,b=145),u===r?(v=210,x=355):u===l?(v=90,x=355):u===o?(v=90,x=145):(v=210,x=145);const M=(L,E)=>E===355?L===210?"M 150,310 L 280,310 L 280,440 L 150,440 Z":"M 20,310 L 150,310 L 150,440 L 20,440 Z":L===90?"M 20,60 L 150,60 L 150,190 L 20,190 Z":"M 150,60 L 280,60 L 280,190 L 150,190 Z",I=M(w,b),C=M(v,x),N=(w+v)/2+30,S=(b+x)/2-40,A=a.sets.map((L,E)=>`
+      `;let w,b,v,x;m===r?(w=210,b=355):m===l?(w=90,b=355):m===o?(w=90,b=145):(w=210,b=145),u===r?(v=210,x=355):u===l?(v=90,x=355):u===o?(v=90,x=145):(v=210,x=145);const M=(L,E)=>E===355?L===210?"M 150,310 L 280,310 L 280,440 L 150,440 Z":"M 20,310 L 150,310 L 150,440 L 20,440 Z":L===90?"M 20,60 L 150,60 L 150,190 L 20,190 Z":"M 150,60 L 280,60 L 280,190 L 150,190 Z",I=M(w,b),C=M(v,x),N=(w+v)/2+30,S=(b+x)/2-40,P=a.sets.map((L,E)=>`
       <div class="umpire-set-badge">
         <span>Set ${E+1}:</span>
         <strong>${L.t1} - ${L.t2}</strong>
@@ -1341,7 +1347,7 @@
             
             <!-- Historic sets display -->
             <div class="flex items-center gap-3 justify-center mb-1">
-              ${A}
+              ${P}
               <div class="umpire-set-badge current">
                 <span>Set ${a.currentSet}:</span>
                 <strong class="text-volt">${a.score1} - ${a.score2}</strong>

@@ -1564,22 +1564,28 @@ class BadmintonApp {
           : `<span class="text-slate-500 text-5xs italic font-sans">${isVi ? 'Chưa đấu' : 'No matches'}</span>`;
 
         return `
-          <div class="team-profile-card glass-panel border border-slate-700/50 rounded-lg hover-glowing flex flex-col justify-between overflow-hidden relative"
+          <div class="team-profile-card ${isMD ? 'team-card-md' : 'team-card-xd'} glass-panel border border-slate-700/50 rounded-lg hover-glowing flex flex-col justify-between overflow-hidden relative"
                style="background: radial-gradient(circle at top right, ${isMD ? 'rgba(163, 230, 53, 0.05)' : 'rgba(34, 211, 238, 0.05)'} 0%, rgba(15, 22, 42, 0.45) 80%);">
             
-            <!-- Team Image Header -->
-            <div class="team-card-image-wrapper relative w-full overflow-hidden border-b border-slate-800/80" style="aspect-ratio: 16/9; background: #07090e;">
-              <img src="/teams/${team.id}.jpg" 
-                   onerror="this.onerror=null; this.src='/teams/${team.id}.png'; this.onerror=function(){ this.style.display='none'; this.parentNode.querySelector('.team-card-image-placeholder').style.display='flex'; }" 
-                   class="w-full h-full object-cover team-card-img" 
-                   style="height: 100%; width: 100%; object-fit: cover;" />
-              <div class="team-card-image-placeholder absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900/60 to-slate-950/90 text-slate-500" style="display: none;">
-                <span style="font-size: 2.25rem; filter: drop-shadow(0 0 8px ${isMD ? 'rgba(163, 230, 53, 0.15)' : 'rgba(34, 211, 238, 0.15)'});">👥</span>
+            <!-- Team Color Banner -->
+            <div class="team-card-banner w-full" style="height: 52px; background: linear-gradient(135deg, ${isMD ? 'rgba(163, 230, 53, 0.15)' : 'rgba(34, 211, 238, 0.15)'} 0%, rgba(15, 22, 42, 0.6) 100%); border-b: 1px solid rgba(255, 255, 255, 0.04);"></div>
+
+            <!-- Team Image Circular Avatar overlapping banner -->
+            <div class="team-card-avatar-wrapper absolute" style="top: 20px; left: 16px; z-index: 10;">
+              <div class="relative w-16 h-16 rounded-full overflow-hidden border-3 border-slate-950 shadow-lg" style="box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 15px ${isMD ? 'rgba(163, 230, 53, 0.2)' : 'rgba(34, 211, 238, 0.2)'};">
+                <img src="/teams/${team.id}.jpg" 
+                     onerror="this.onerror=null; this.src='/teams/${team.id}.png'; this.onerror=function(){ this.style.display='none'; this.parentNode.querySelector('.team-avatar-placeholder').style.display='flex'; }" 
+                     class="w-full h-full object-cover team-card-img" 
+                     style="height: 100%; width: 100%; object-fit: cover;" />
+                <div class="team-avatar-placeholder absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950 text-slate-400" style="display: none;">
+                  <span style="font-size: 1.25rem;">👥</span>
+                </div>
               </div>
             </div>
 
-            <div class="p-4 flex-1 flex flex-col justify-between">
+            <div class="p-4 pt-9 flex-1 flex flex-col justify-between" style="margin-top: 0;">
               <div>
+
                 <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
                   <div class="flex items-center gap-1.5 truncate max-w-[70%]">
                     <span class="font-extrabold text-sm text-slate-100 truncate pr-1" title="${team.name}">${team.name}</span>

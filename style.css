@@ -882,21 +882,38 @@ html[data-theme="light"] .nav-active-pill {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
 }
 
+.team-card-banner {
+  transition: opacity 0.3s ease;
+}
+
+.team-profile-card:hover .team-card-banner {
+  opacity: 0.85;
+}
+
 .team-card-img {
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .team-profile-card:hover .team-card-img {
-  transform: scale(1.06);
+  transform: scale(1.08);
 }
 
-.team-card-image-placeholder {
-  transition: background-color 0.3s ease;
+.team-card-avatar-wrapper > div {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.team-profile-card:hover .team-card-image-placeholder {
-  background: rgba(15, 23, 42, 0.95);
+.team-profile-card:hover .team-card-avatar-wrapper > div {
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
+
+.team-profile-card.team-card-md:hover .team-card-avatar-wrapper > div {
+  box-shadow: 0 6px 15px rgba(0,0,0,0.6), 0 0 25px rgba(163, 230, 53, 0.4) !important;
+}
+
+.team-profile-card.team-card-xd:hover .team-card-avatar-wrapper > div {
+  box-shadow: 0 6px 15px rgba(0,0,0,0.6), 0 0 25px rgba(34, 211, 238, 0.4) !important;
+}
+
 
 
 .player-circle {
