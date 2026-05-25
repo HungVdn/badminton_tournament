@@ -349,6 +349,13 @@ class BadmintonApp {
         this.renderTeams(viewContainer);
         break;
     }
+
+    // Apply "Pro Max" Staggered Animations dynamically
+    const animElements = viewContainer.querySelectorAll('.glass-card, .dashboard-stat-card, .team-card, .match-card, .bracket-node, .standings-table tbody tr');
+    animElements.forEach((el, idx) => {
+      el.classList.add('animate-fade-slide-up');
+      el.style.animationDelay = `${idx * 0.03}s`;
+    });
   }
 
   renderDashboard(container) {
@@ -812,13 +819,13 @@ class BadmintonApp {
     const renderStageSection = (matches, stageTitle) => {
       if (matches.length === 0) return '';
       return `
-        <div class="glass-card flex flex-col gap-3 relative overflow-hidden" style="background: rgba(15, 23, 42, 0.25); padding: 1.25rem;">
-          <div class="absolute top-0 left-0 w-full h-[2px]" style="background: ${isMD ? 'var(--volt)' : 'var(--cyan)'};"></div>
+        <div class="fixtures-stage-card glass-card flex flex-col gap-3 relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[3px]" style="background: ${isMD ? 'var(--volt)' : 'var(--cyan)'}; box-shadow: 0 1px 8px ${isMD ? 'var(--volt)' : 'var(--cyan)'};"></div>
           <div class="text-4xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 pb-1.5 border-b border-slate-800/80 flex items-center justify-between">
             <span class="${isMD ? 'text-volt' : 'text-cyan'} font-extrabold" style="font-size: 0.65rem; letter-spacing: 0.05em;">${stageTitle}</span>
             <span class="text-slate-600 font-medium">${matches.length} ${matches.length === 1 ? 'Match' : 'Matches'}</span>
           </div>
-          <div class="flex flex-col gap-3">
+          <div class="fixtures-grid">
             ${this.renderMatchCards(matches)}
           </div>
         </div>
@@ -980,7 +987,7 @@ class BadmintonApp {
       const adminCardClass = this.admin.isAdmin ? 'admin-card' : '';
 
       return `
-        <div class="match-card glass-panel rounded-lg p-4 border border-slate-700/50 flex flex-col justify-between hover-glowing ${highlightClass} ${adminCardClass}">
+        <div class="match-card glass-panel rounded-lg p-4 border border-slate-700/50 flex flex-col justify-between hover-glowing ${isMD ? 'md-ticket' : 'xd-ticket'} ${highlightClass} ${adminCardClass}">
           <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
             <div class="flex items-center text-xs font-semibold text-slate-300">
               ${catBadge}
@@ -1060,7 +1067,7 @@ class BadmintonApp {
         const advanceColor = isTop4 ? 'text-emerald-400' : 'text-slate-500';
         
         return `
-          <div class="flex items-center justify-between text-4xs border-b border-slate-800/40 pb-1.5 last:border-b-0 last:pb-0" style="padding: 0.2rem 0;">
+          <div class="flex items-center justify-between text-4xs border-b border-slate-800/40 pb-1.5 last:border-b-0 last:pb-0" style="padding: 0.2rem 0;" data-team-name="${team.name}">
             <div class="flex items-center gap-1.5 truncate max-w-[125px]" title="${team.name}">
               <span class="rank-circle font-bold ${rankBadgeClass}" style="width: 18px; height: 18px; font-size: 0.55rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;">${rank}</span>
               <span class="font-bold text-slate-200 truncate">${team.name}</span>
@@ -1133,7 +1140,7 @@ class BadmintonApp {
             
             <div class="flex flex-col gap-1.5">
               <!-- Team 1 Row -->
-              <div class="flex items-center justify-between text-3xs font-bold ${isComp && match.winner === match.team1 ? winnerColorClass : 'text-slate-300'}">
+              <div class="flex items-center justify-between text-3xs font-bold ${isComp && match.winner === match.team1 ? winnerColorClass : 'text-slate-300'}" data-team-name="${match.team1}">
                 <div class="flex flex-col min-w-0 pr-1.5">
                   <span class="truncate" title="${match.team1}">${match.team1}</span>
                   <span class="text-5xs text-slate-500 font-normal mt-0.5 truncate" style="max-w-[85px];" title="${team1Players || (isVi ? 'Đang xác định' : 'TBD')}">${team1Players || (isVi ? 'Đang xác định' : 'TBD')}</span>
@@ -1144,7 +1151,7 @@ class BadmintonApp {
               </div>
               
               <!-- Team 2 Row -->
-              <div class="flex items-center justify-between text-3xs font-bold ${isComp && match.winner === match.team2 ? winnerColorClass : 'text-slate-300'}">
+              <div class="flex items-center justify-between text-3xs font-bold ${isComp && match.winner === match.team2 ? winnerColorClass : 'text-slate-300'}" data-team-name="${match.team2}">
                 <div class="flex flex-col min-w-0 pr-1.5">
                   <span class="truncate" title="${match.team2}">${match.team2}</span>
                   <span class="text-5xs text-slate-500 font-normal mt-0.5 truncate" style="max-w-[85px];" title="${team2Players || (isVi ? 'Đang xác định' : 'TBD')}">${team2Players || (isVi ? 'Đang xác định' : 'TBD')}</span>
@@ -1239,7 +1246,7 @@ class BadmintonApp {
               <div class="node-label mb-2 text-center text-gold font-bold" style="letter-spacing: 0.05em;">🏆 ${isVi ? 'BẢNG VÀNG' : 'FINAL RESULTS'}</div>
               
               <!-- Gold Node -->
-              <div class="bracket-node glass-panel border border-amber-500/35 rounded hover-glowing" style="background: rgba(245, 158, 11, 0.03); padding: 0.5rem 0.65rem;">
+              <div class="bracket-node glass-panel border border-amber-500/35 rounded hover-glowing" style="background: rgba(245, 158, 11, 0.03); padding: 0.5rem 0.65rem;" data-team-name="${awards.goldTeam.name}">
                 <div class="flex items-center gap-1.5 font-extrabold text-3xs text-amber-400">
                   <span>🥇</span>
                   <span>${isVi ? 'VÔ ĐỊCH' : 'CHAMPION'}</span>
@@ -1249,7 +1256,7 @@ class BadmintonApp {
               </div>
 
               <!-- Silver Node -->
-              <div class="bracket-node glass-panel border border-slate-400/30 rounded hover-glowing" style="background: rgba(148, 163, 184, 0.02); padding: 0.5rem 0.65rem;">
+              <div class="bracket-node glass-panel border border-slate-400/30 rounded hover-glowing" style="background: rgba(148, 163, 184, 0.02); padding: 0.5rem 0.65rem;" data-team-name="${awards.silverTeam.name}">
                 <div class="flex items-center gap-1.5 font-bold text-3xs text-slate-300">
                   <span>🥈</span>
                   <span>${isVi ? 'Á QUÂN' : 'RUNNER-UP'}</span>
@@ -1259,7 +1266,7 @@ class BadmintonApp {
               </div>
 
               <!-- Bronze Node -->
-              <div class="bracket-node glass-panel border border-amber-700/30 rounded hover-glowing" style="background: rgba(217, 119, 6, 0.01); padding: 0.5rem 0.65rem;">
+              <div class="bracket-node glass-panel border border-amber-700/30 rounded hover-glowing" style="background: rgba(217, 119, 6, 0.01); padding: 0.5rem 0.65rem;" data-team-name="${awards.bronzeTeam.name}">
                 <div class="flex items-center gap-1.5 font-bold text-3xs text-amber-600">
                   <span>🥉</span>
                   <span>${isVi ? 'HẠNG 3' : '3RD PLACE'}</span>
@@ -1269,7 +1276,7 @@ class BadmintonApp {
               </div>
 
               <!-- 4th Place Node -->
-              <div class="bracket-node glass-panel border border-slate-600/30 rounded hover-glowing" style="background: rgba(148, 163, 184, 0.01); padding: 0.5rem 0.65rem;">
+              <div class="bracket-node glass-panel border border-slate-600/30 rounded hover-glowing" style="background: rgba(148, 163, 184, 0.01); padding: 0.5rem 0.65rem;" data-team-name="${awards.fourthTeam.name}">
                 <div class="flex items-center gap-1.5 font-bold text-3xs text-slate-400">
                   <span>🏅</span>
                   <span>${isVi ? 'HẠNG 4' : '4TH PLACE'}</span>
@@ -1292,6 +1299,48 @@ class BadmintonApp {
       ${renderBracketTree(md, "Men's Doubles", true, "Men's Doubles")}
       ${renderBracketTree(xd, "Mixed's Doubles", false, "Mixed's Doubles")}
     `;
+
+    setTimeout(() => this.setupBracketHighlights(), 50);
+  }
+
+  setupBracketHighlights() {
+    const bracketContainer = document.querySelector('.bracket-visualizer');
+    if (!bracketContainer) return;
+
+    bracketContainer.addEventListener('mouseover', (e) => {
+      const teamEl = e.target.closest('[data-team-name]');
+      if (!teamEl) return;
+
+      const teamName = teamEl.getAttribute('data-team-name');
+      if (!teamName || teamName.includes('Winner') || teamName.includes('Loser') || teamName.includes('Place')) return;
+
+      // Find all elements with this team name and highlight
+      const relatedNodes = document.querySelectorAll(`[data-team-name="${CSS.escape(teamName)}"]`);
+      relatedNodes.forEach(node => {
+        node.classList.add('team-highlight-active');
+        const parentNode = node.closest('.bracket-node');
+        if (parentNode) {
+          parentNode.classList.add('node-highlight-active');
+        }
+      });
+    });
+
+    bracketContainer.addEventListener('mouseout', (e) => {
+      const teamEl = e.target.closest('[data-team-name]');
+      if (!teamEl) return;
+
+      const teamName = teamEl.getAttribute('data-team-name');
+      if (!teamName) return;
+
+      const relatedNodes = document.querySelectorAll(`[data-team-name]`);
+      relatedNodes.forEach(node => {
+        node.classList.remove('team-highlight-active');
+        const parentNode = node.closest('.bracket-node');
+        if (parentNode) {
+          parentNode.classList.remove('node-highlight-active');
+        }
+      });
+    });
   }
 
   getAwardResults(category) {
