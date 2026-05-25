@@ -1484,7 +1484,7 @@ class BadmintonApp {
 
         if (!teamName || teamName.includes('TBD') || teamName.includes('Place') || teamName.includes('Winner') || teamName.includes('Loser') || teamName.includes('Chasing') || teamName.includes('Tranh') || teamName.includes('Chung')) {
           return `
-            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/85 mx-auto" style="width: ${sizePx}px; height: ${sizePx}px; font-size: ${sizePx * 0.25}rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 50% !important; position: relative;">
+            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/85 mx-auto" style="width: ${sizePx}px; height: ${sizePx}px; font-size: ${sizePx * 0.4}px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 50% !important; position: relative;">
               👥
               ${medalHtml}
             </div>
@@ -1494,7 +1494,7 @@ class BadmintonApp {
         const team = this.state.teams.find(t => t.name === teamName);
         if (!team) {
           return `
-            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/85 mx-auto" style="width: ${sizePx}px; height: ${sizePx}px; font-size: ${sizePx * 0.25}rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 50% !important; position: relative;">
+            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/85 mx-auto" style="width: ${sizePx}px; height: ${sizePx}px; font-size: ${sizePx * 0.4}px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 50% !important; position: relative;">
               👥
               ${medalHtml}
             </div>
@@ -1508,7 +1508,7 @@ class BadmintonApp {
                  class="podium-avatar object-cover" 
                  style="width: 100%; height: 100%; display: block; border-radius: 50% !important; box-shadow: 0 4px 10px rgba(0,0,0,0.4);" />
             <div class="team-fallback-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800" 
-                 style="display:none; width: 100%; height: 100%; border-radius: 50% !important; font-size: ${sizePx * 0.25}rem;">👥</div>
+                 style="display:none; width: 100%; height: 100%; border-radius: 50% !important; font-size: ${sizePx * 0.4}px;">👥</div>
             ${medalHtml}
           </div>
         `;

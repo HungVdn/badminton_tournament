@@ -1033,7 +1033,7 @@
               🎖️
             </div>
           `),!b||b.includes("TBD")||b.includes("Place")||b.includes("Winner")||b.includes("Loser")||b.includes("Chasing")||b.includes("Tranh")||b.includes("Chung"))return`
-            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/85 mx-auto" style="width: ${y}px; height: ${y}px; font-size: ${y*.25}rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 50% !important; position: relative;">
+            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/85 mx-auto" style="width: ${y}px; height: ${y}px; font-size: ${y*.4}px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 50% !important; position: relative;">
               👥
               ${M}
             </div>
@@ -1044,11 +1044,11 @@
                  class="podium-avatar object-cover" 
                  style="width: 100%; height: 100%; display: block; border-radius: 50% !important; box-shadow: 0 4px 10px rgba(0,0,0,0.4);" />
             <div class="team-fallback-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800" 
-                 style="display:none; width: 100%; height: 100%; border-radius: 50% !important; font-size: ${y*.25}rem;">👥</div>
+                 style="display:none; width: 100%; height: 100%; border-radius: 50% !important; font-size: ${y*.4}px;">👥</div>
             ${M}
           </div>
         `:`
-            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/85 mx-auto" style="width: ${y}px; height: ${y}px; font-size: ${y*.25}rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 50% !important; position: relative;">
+            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/85 mx-auto" style="width: ${y}px; height: ${y}px; font-size: ${y*.4}px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 50% !important; position: relative;">
               👥
               ${M}
             </div>
