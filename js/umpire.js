@@ -7,7 +7,7 @@ export class UmpireConsole {
     this.sync = sync;
     this.matchId = matchId;
     this.onFinish = onFinishCallback;
-    this.lang = localStorage.getItem('badminton_lang') || 'vi';
+    this.lang = 'en';
 
     // Retrieve match
     this.match = this.state.matches.find(m => m.id === matchId);

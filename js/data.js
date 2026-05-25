@@ -331,7 +331,7 @@ export const REGULATIONS_DATA = {
         title: "II. Thời gian & Địa điểm",
         content: [
           "• Ngày thi đấu: 31 May 2026",
-          "• Địa điểm: Sân cầu lông Beta Era"
+          "• Địa điểm: Sân cầu lông Alpha Era"
         ]
       },
       {
@@ -404,7 +404,7 @@ export const REGULATIONS_DATA = {
         title: "II. Schedule & Venue",
         content: [
           "• Date: 31 May 2026",
-          "• Venue: Beta Era court"
+          "• Venue: Alpha Era court"
         ]
       },
       {

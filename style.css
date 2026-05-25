@@ -554,57 +554,28 @@ html[data-theme="light"] .nav-active-pill {
 .match-card {
   position: relative;
   overflow: hidden;
-  min-height: 145px;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(135deg, rgba(15, 22, 42, 0.5) 0%, rgba(8, 12, 26, 0.75) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(15, 22, 42, 0.5) 0%, rgba(8, 12, 26, 0.7) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
   padding: 1.25rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .match-card.admin-card {
-  min-height: 185px;
+  min-height: 175px;
 }
 
-/* Category-themed ticket borders */
-.match-card.md-ticket {
+.match-card.border-completed {
   border-left: 4px solid var(--volt);
 }
 
-.match-card.xd-ticket {
-  border-left: 4px solid var(--cyan);
-}
-
-/* Completion states */
-.match-card.border-completed {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.03) 0%, rgba(15, 22, 42, 0.5) 50%, rgba(8, 12, 26, 0.75) 100%);
-}
-
-/* Perforation Ticket notches */
-.match-card::before, .match-card::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  background: var(--bg-dark);
-  border-radius: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
-  box-shadow: inset 2px 0 4px rgba(0,0,0,0.6);
-}
-
-.match-card::before {
-  left: -7px;
-}
-
-.match-card::after {
-  right: -7px;
-  box-shadow: inset -2px 0 4px rgba(0,0,0,0.6);
+.match-card.border-scheduled {
+  border-left: 4px solid rgba(255, 255, 255, 0.15);
 }
 
 .match-badge {
@@ -628,28 +599,6 @@ html[data-theme="light"] .nav-active-pill {
 .match-badge.scheduled {
   background: rgba(129, 140, 248, 0.12);
   color: #a5b4fc;
-}
-
-.fixtures-grid {
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-@media (min-width: 768px) {
-  .fixtures-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.fixtures-stage-card {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.25) 0%, rgba(8, 12, 26, 0.5) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 18px;
-  padding: 1.5rem;
-  box-shadow: 
-    0 4px 20px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .score-display {
@@ -713,15 +662,15 @@ html[data-theme="light"] .nav-active-pill {
 
 /* Bracket dynamic highlights */
 .team-highlight-active {
-  color: var(--volt) !important;
-  text-shadow: 0 0 10px rgba(163, 230, 53, 0.4);
+  color: #ff007f !important;
+  text-shadow: 0 0 10px rgba(255, 0, 127, 0.6);
 }
 
 .node-highlight-active {
-  border-color: var(--volt) !important;
+  border-color: #ff007f !important;
   box-shadow: 
     0 8px 25px rgba(0, 0, 0, 0.4),
-    0 0 15px rgba(163, 230, 53, 0.25) !important;
+    0 0 20px rgba(255, 0, 127, 0.3) !important;
   transform: translateY(-2px) scale(1.03);
   z-index: 10;
 }
