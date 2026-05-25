@@ -1098,84 +1098,98 @@
         </div>
       </div>
     `}renderTeams(s){const t=this.lang==="vi",i=(a,r)=>{const l=r==="Men's Doubles",o=l?"text-volt":"text-cyan",h=this.state.calculateStandings(r),p=a.map(c=>{const g=this.state.matches.filter(S=>S.category===r&&S.status==="Completed"&&(S.team1===c.name||S.team2===c.name));let d=0,m=0,u=0,f=0,y=0,$=0;g.forEach(S=>{const A=S.team1===c.name;S.winner===c.name?d++:m++,A?(u+=Number(S.score1)||0,f+=Number(S.score2)||0):(u+=Number(S.score2)||0,f+=Number(S.score1)||0),S.sets&&Array.isArray(S.sets)&&S.sets.forEach(L=>{const E=Number(L.t1)||0,k=Number(L.t2)||0;A?(y+=E,$+=k):(y+=k,$+=E)})});const T=g.length,w=T>0?Math.round(d/T*100):0,b=u-f,v=y-$,x=d,M=h.findIndex(S=>S.name===c.name),I=M!==-1?M+1:"-",C=g.map(S=>{const A=S.winner===c.name,L=A?"bg-emerald-500/10 text-emerald-400 border border-emerald-500/20":"bg-rose-500/10 text-rose-400 border border-rose-500/20",E=A?"W":"L",k=`${S.stage}: ${S.team1} vs ${S.team2} (${S.score1}-${S.score2})`;return`<span class="flex items-center justify-center rounded-full font-bold font-mono text-5xs cursor-help ${L}" style="width: 14px; height: 14px; font-size: 0.45rem;" title="${k}">${E}</span>`}).join(""),N=C.length>0?C:`<span class="text-slate-500 text-5xs italic font-sans">${t?"Chưa đấu":"No matches"}</span>`;return`
-          <div class="team-profile-card glass-panel border border-slate-700/50 p-4 rounded-lg hover-glowing flex flex-col justify-between"
+          <div class="team-profile-card glass-panel border border-slate-700/50 rounded-lg hover-glowing flex flex-col justify-between overflow-hidden relative"
                style="background: radial-gradient(circle at top right, ${l?"rgba(163, 230, 53, 0.05)":"rgba(34, 211, 238, 0.05)"} 0%, rgba(15, 22, 42, 0.45) 80%);">
-            <div>
-              <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-                <div class="flex items-center gap-1.5 truncate max-w-[70%]">
-                  <span class="font-extrabold text-sm text-slate-100 truncate pr-1" title="${c.name}">${c.name}</span>
-                </div>
-                <div class="flex items-center gap-1.5 flex-shrink-0">
-                  <span class="badge bg-slate-800/80 text-slate-300 font-extrabold text-5xs border border-slate-700/50">#${I}</span>
-                  <span class="badge ${l?"bg-volt":"bg-cyan"} text-slate-950 font-bold text-4xs">TEAM</span>
-                </div>
-              </div>
-
-              <!-- Members -->
-              <div class="flex flex-col gap-1.5 mb-4 text-xs">
-                <div class="flex items-center gap-2">
-                  <span class="text-slate-500">🏸</span>
-                  <span class="font-semibold text-slate-300">${c.player1}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-slate-500">🏸</span>
-                  <span class="font-semibold text-slate-300">${c.player2}</span>
-                </div>
-                
-                <!-- Form guide -->
-                <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-800/40">
-                  <span class="text-5xs font-bold uppercase tracking-wider text-slate-500">${t?"PHONG ĐỘ:":"FORM:"}</span>
-                  <div class="flex items-center gap-1">
-                    ${N}
-                  </div>
-                </div>
+            
+            <!-- Team Image Header -->
+            <div class="team-card-image-wrapper relative w-full overflow-hidden border-b border-slate-800/80" style="aspect-ratio: 16/9; background: #07090e;">
+              <img src="/teams/${c.id}.jpg" 
+                   onerror="this.onerror=null; this.src='/teams/${c.id}.png'; this.onerror=function(){ this.style.display='none'; this.parentNode.querySelector('.team-card-image-placeholder').style.display='flex'; }" 
+                   class="w-full h-full object-cover team-card-img" 
+                   style="height: 100%; width: 100%; object-fit: cover;" />
+              <div class="team-card-image-placeholder absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900/60 to-slate-950/90 text-slate-500" style="display: none;">
+                <span style="font-size: 2.25rem; filter: drop-shadow(0 0 8px ${l?"rgba(163, 230, 53, 0.15)":"rgba(34, 211, 238, 0.15)"});">👥</span>
               </div>
             </div>
 
-            <!-- Stats -->
-            <div class="bg-slate-950/60 p-3 rounded border border-slate-900 text-4xs">
-              <!-- Summary row -->
-              <div class="grid grid-cols-4 gap-1 text-center font-semibold text-slate-400 mb-3 border-b border-slate-900 pb-2">
-                <div>
-                  <div class="text-2xs font-extrabold text-slate-200">${T}</div>
-                  <div class="text-5xs uppercase tracking-wider text-slate-500">${t?"Đã đấu":"Pld"}</div>
+            <div class="p-4 flex-1 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                  <div class="flex items-center gap-1.5 truncate max-w-[70%]">
+                    <span class="font-extrabold text-sm text-slate-100 truncate pr-1" title="${c.name}">${c.name}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <span class="badge bg-slate-800/80 text-slate-300 font-extrabold text-5xs border border-slate-700/50">#${I}</span>
+                    <span class="badge ${l?"bg-volt":"bg-cyan"} text-slate-950 font-bold text-4xs">TEAM</span>
+                  </div>
                 </div>
-                <div>
-                  <div class="text-2xs font-extrabold ${l?"text-volt":"text-cyan"}">${d}</div>
-                  <div class="text-5xs uppercase tracking-wider text-slate-500">${t?"Thắng":"Won"}</div>
-                </div>
-                <div>
-                  <div class="text-2xs font-extrabold ${m>0?"text-rose-400":"text-slate-400"}">${m}</div>
-                  <div class="text-5xs uppercase tracking-wider text-slate-500">${t?"Thua":"Lost"}</div>
-                </div>
-                <div>
-                  <div class="text-2xs font-extrabold text-slate-200">${w}%</div>
-                  <div class="text-5xs uppercase tracking-wider text-slate-500">${t?"Tỉ Lệ":"Win%"}</div>
+
+                <!-- Members -->
+                <div class="flex flex-col gap-1.5 mb-4 text-xs">
+                  <div class="flex items-center gap-2">
+                    <span class="text-slate-500">🏸</span>
+                    <span class="font-semibold text-slate-300">${c.player1}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-slate-500">🏸</span>
+                    <span class="font-semibold text-slate-300">${c.player2}</span>
+                  </div>
+                  
+                  <!-- Form guide -->
+                  <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-800/40">
+                    <span class="text-5xs font-bold uppercase tracking-wider text-slate-500">${t?"PHONG ĐỘ:":"FORM:"}</span>
+                    <div class="flex items-center gap-1">
+                      ${N}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Telemetry detail list -->
-              <div class="flex flex-col gap-1.5 font-mono">
-                <div class="flex items-center justify-between text-slate-400">
-                  <span>${t?"Điểm tích lũy:":"Standing Pts:"}</span>
-                  <span class="font-extrabold text-slate-200">${x}</span>
-                </div>
-                <div class="flex items-center justify-between text-slate-400">
-                  <span>${t?"Set Thắng/Bại:":"Sets W/L:"}</span>
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-slate-200">${u}-${f}</span>
-                    <span class="text-5xs font-bold px-1 py-0.5 rounded ${b>0?"bg-emerald-500/10 text-emerald-400":b<0?"bg-rose-500/10 text-rose-400":"bg-slate-800 text-slate-400"}">
-                      ${b>0?"+":""}${b}
-                    </span>
+              <!-- Stats -->
+              <div class="bg-slate-950/60 p-3 rounded border border-slate-900 text-4xs">
+                <!-- Summary row -->
+                <div class="grid grid-cols-4 gap-1 text-center font-semibold text-slate-400 mb-3 border-b border-slate-900 pb-2">
+                  <div>
+                    <div class="text-2xs font-extrabold text-slate-200">${T}</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">${t?"Đã đấu":"Pld"}</div>
+                  </div>
+                  <div>
+                    <div class="text-2xs font-extrabold ${l?"text-volt":"text-cyan"}">${d}</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">${t?"Thắng":"Won"}</div>
+                  </div>
+                  <div>
+                    <div class="text-2xs font-extrabold ${m>0?"text-rose-400":"text-slate-400"}">${m}</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">${t?"Thua":"Lost"}</div>
+                  </div>
+                  <div>
+                    <div class="text-2xs font-extrabold text-slate-200">${w}%</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">${t?"Tỉ Lệ":"Win%"}</div>
                   </div>
                 </div>
-                <div class="flex items-center justify-between text-slate-400">
-                  <span>${t?"Điểm Thắng/Bại:":"Points W/L:"}</span>
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-slate-200">${y}-${$}</span>
-                    <span class="text-5xs font-bold px-1 py-0.5 rounded ${v>0?"bg-emerald-500/10 text-emerald-400":v<0?"bg-rose-500/10 text-rose-400":"bg-slate-800 text-slate-400"}">
-                      ${v>0?"+":""}${v}
-                    </span>
+
+                <!-- Telemetry detail list -->
+                <div class="flex flex-col gap-1.5 font-mono">
+                  <div class="flex items-center justify-between text-slate-400">
+                    <span>${t?"Điểm tích lũy:":"Standing Pts:"}</span>
+                    <span class="font-extrabold text-slate-200">${x}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-slate-400">
+                    <span>${t?"Set Thắng/Bại:":"Sets W/L:"}</span>
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-slate-200">${u}-${f}</span>
+                      <span class="text-5xs font-bold px-1 py-0.5 rounded ${b>0?"bg-emerald-500/10 text-emerald-400":b<0?"bg-rose-500/10 text-rose-400":"bg-slate-800 text-slate-400"}">
+                        ${b>0?"+":""}${b}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between text-slate-400">
+                    <span>${t?"Điểm Thắng/Bại:":"Points W/L:"}</span>
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-slate-200">${y}-${$}</span>
+                      <span class="text-5xs font-bold px-1 py-0.5 rounded ${v>0?"bg-emerald-500/10 text-emerald-400":v<0?"bg-rose-500/10 text-rose-400":"bg-slate-800 text-slate-400"}">
+                        ${v>0?"+":""}${v}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

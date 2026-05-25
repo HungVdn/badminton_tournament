@@ -1564,84 +1564,98 @@ class BadmintonApp {
           : `<span class="text-slate-500 text-5xs italic font-sans">${isVi ? 'Chưa đấu' : 'No matches'}</span>`;
 
         return `
-          <div class="team-profile-card glass-panel border border-slate-700/50 p-4 rounded-lg hover-glowing flex flex-col justify-between"
+          <div class="team-profile-card glass-panel border border-slate-700/50 rounded-lg hover-glowing flex flex-col justify-between overflow-hidden relative"
                style="background: radial-gradient(circle at top right, ${isMD ? 'rgba(163, 230, 53, 0.05)' : 'rgba(34, 211, 238, 0.05)'} 0%, rgba(15, 22, 42, 0.45) 80%);">
-            <div>
-              <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-                <div class="flex items-center gap-1.5 truncate max-w-[70%]">
-                  <span class="font-extrabold text-sm text-slate-100 truncate pr-1" title="${team.name}">${team.name}</span>
-                </div>
-                <div class="flex items-center gap-1.5 flex-shrink-0">
-                  <span class="badge bg-slate-800/80 text-slate-300 font-extrabold text-5xs border border-slate-700/50">#${rank}</span>
-                  <span class="badge ${isMD ? 'bg-volt' : 'bg-cyan'} text-slate-950 font-bold text-4xs">TEAM</span>
-                </div>
-              </div>
-
-              <!-- Members -->
-              <div class="flex flex-col gap-1.5 mb-4 text-xs">
-                <div class="flex items-center gap-2">
-                  <span class="text-slate-500">🏸</span>
-                  <span class="font-semibold text-slate-300">${team.player1}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-slate-500">🏸</span>
-                  <span class="font-semibold text-slate-300">${team.player2}</span>
-                </div>
-                
-                <!-- Form guide -->
-                <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-800/40">
-                  <span class="text-5xs font-bold uppercase tracking-wider text-slate-500">${isVi ? 'PHONG ĐỘ:' : 'FORM:'}</span>
-                  <div class="flex items-center gap-1">
-                    ${formPillsHtml}
-                  </div>
-                </div>
+            
+            <!-- Team Image Header -->
+            <div class="team-card-image-wrapper relative w-full overflow-hidden border-b border-slate-800/80" style="aspect-ratio: 16/9; background: #07090e;">
+              <img src="/teams/${team.id}.jpg" 
+                   onerror="this.onerror=null; this.src='/teams/${team.id}.png'; this.onerror=function(){ this.style.display='none'; this.parentNode.querySelector('.team-card-image-placeholder').style.display='flex'; }" 
+                   class="w-full h-full object-cover team-card-img" 
+                   style="height: 100%; width: 100%; object-fit: cover;" />
+              <div class="team-card-image-placeholder absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-slate-900/60 to-slate-950/90 text-slate-500" style="display: none;">
+                <span style="font-size: 2.25rem; filter: drop-shadow(0 0 8px ${isMD ? 'rgba(163, 230, 53, 0.15)' : 'rgba(34, 211, 238, 0.15)'});">👥</span>
               </div>
             </div>
 
-            <!-- Stats -->
-            <div class="bg-slate-950/60 p-3 rounded border border-slate-900 text-4xs">
-              <!-- Summary row -->
-              <div class="grid grid-cols-4 gap-1 text-center font-semibold text-slate-400 mb-3 border-b border-slate-900 pb-2">
-                <div>
-                  <div class="text-2xs font-extrabold text-slate-200">${played}</div>
-                  <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Đã đấu' : 'Pld'}</div>
+            <div class="p-4 flex-1 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                  <div class="flex items-center gap-1.5 truncate max-w-[70%]">
+                    <span class="font-extrabold text-sm text-slate-100 truncate pr-1" title="${team.name}">${team.name}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <span class="badge bg-slate-800/80 text-slate-300 font-extrabold text-5xs border border-slate-700/50">#${rank}</span>
+                    <span class="badge ${isMD ? 'bg-volt' : 'bg-cyan'} text-slate-950 font-bold text-4xs">TEAM</span>
+                  </div>
                 </div>
-                <div>
-                  <div class="text-2xs font-extrabold ${isMD ? 'text-volt' : 'text-cyan'}">${wins}</div>
-                  <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Thắng' : 'Won'}</div>
-                </div>
-                <div>
-                  <div class="text-2xs font-extrabold ${losses > 0 ? 'text-rose-400' : 'text-slate-400'}">${losses}</div>
-                  <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Thua' : 'Lost'}</div>
-                </div>
-                <div>
-                  <div class="text-2xs font-extrabold text-slate-200">${winPercent}%</div>
-                  <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Tỉ Lệ' : 'Win%'}</div>
+
+                <!-- Members -->
+                <div class="flex flex-col gap-1.5 mb-4 text-xs">
+                  <div class="flex items-center gap-2">
+                    <span class="text-slate-500">🏸</span>
+                    <span class="font-semibold text-slate-300">${team.player1}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-slate-500">🏸</span>
+                    <span class="font-semibold text-slate-300">${team.player2}</span>
+                  </div>
+                  
+                  <!-- Form guide -->
+                  <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-800/40">
+                    <span class="text-5xs font-bold uppercase tracking-wider text-slate-500">${isVi ? 'PHONG ĐỘ:' : 'FORM:'}</span>
+                    <div class="flex items-center gap-1">
+                      ${formPillsHtml}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Telemetry detail list -->
-              <div class="flex flex-col gap-1.5 font-mono">
-                <div class="flex items-center justify-between text-slate-400">
-                  <span>${isVi ? 'Điểm tích lũy:' : 'Standing Pts:'}</span>
-                  <span class="font-extrabold text-slate-200">${pts}</span>
-                </div>
-                <div class="flex items-center justify-between text-slate-400">
-                  <span>${isVi ? 'Set Thắng/Bại:' : 'Sets W/L:'}</span>
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-slate-200">${setsWon}-${setsLost}</span>
-                    <span class="text-5xs font-bold px-1 py-0.5 rounded ${netSets > 0 ? 'bg-emerald-500/10 text-emerald-400' : netSets < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'}">
-                      ${netSets > 0 ? '+' : ''}${netSets}
-                    </span>
+              <!-- Stats -->
+              <div class="bg-slate-950/60 p-3 rounded border border-slate-900 text-4xs">
+                <!-- Summary row -->
+                <div class="grid grid-cols-4 gap-1 text-center font-semibold text-slate-400 mb-3 border-b border-slate-900 pb-2">
+                  <div>
+                    <div class="text-2xs font-extrabold text-slate-200">${played}</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Đã đấu' : 'Pld'}</div>
+                  </div>
+                  <div>
+                    <div class="text-2xs font-extrabold ${isMD ? 'text-volt' : 'text-cyan'}">${wins}</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Thắng' : 'Won'}</div>
+                  </div>
+                  <div>
+                    <div class="text-2xs font-extrabold ${losses > 0 ? 'text-rose-400' : 'text-slate-400'}">${losses}</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Thua' : 'Lost'}</div>
+                  </div>
+                  <div>
+                    <div class="text-2xs font-extrabold text-slate-200">${winPercent}%</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Tỉ Lệ' : 'Win%'}</div>
                   </div>
                 </div>
-                <div class="flex items-center justify-between text-slate-400">
-                  <span>${isVi ? 'Điểm Thắng/Bại:' : 'Points W/L:'}</span>
-                  <div class="flex items-center gap-1.5">
-                    <span class="text-slate-200">${pointsWon}-${pointsLost}</span>
-                    <span class="text-5xs font-bold px-1 py-0.5 rounded ${netPoints > 0 ? 'bg-emerald-500/10 text-emerald-400' : netPoints < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'}">
-                      ${netPoints > 0 ? '+' : ''}${netPoints}
-                    </span>
+
+                <!-- Telemetry detail list -->
+                <div class="flex flex-col gap-1.5 font-mono">
+                  <div class="flex items-center justify-between text-slate-400">
+                    <span>${isVi ? 'Điểm tích lũy:' : 'Standing Pts:'}</span>
+                    <span class="font-extrabold text-slate-200">${pts}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-slate-400">
+                    <span>${isVi ? 'Set Thắng/Bại:' : 'Sets W/L:'}</span>
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-slate-200">${setsWon}-${setsLost}</span>
+                      <span class="text-5xs font-bold px-1 py-0.5 rounded ${netSets > 0 ? 'bg-emerald-500/10 text-emerald-400' : netSets < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'}">
+                        ${netSets > 0 ? '+' : ''}${netSets}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between text-slate-400">
+                    <span>${isVi ? 'Điểm Thắng/Bại:' : 'Points W/L:'}</span>
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-slate-200">${pointsWon}-${pointsLost}</span>
+                      <span class="text-5xs font-bold px-1 py-0.5 rounded ${netPoints > 0 ? 'bg-emerald-500/10 text-emerald-400' : netPoints < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'}">
+                        ${netPoints > 0 ? '+' : ''}${netPoints}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
