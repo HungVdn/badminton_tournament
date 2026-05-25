@@ -163,7 +163,6 @@ export class UmpireConsole {
 
   addPoint(team) {
     this.saveToHistory();
-    const isVi = this.lang === 'vi';
 
     if (team === 'A') {
       // Swapping rule: swap only if this team holds the serve
@@ -189,10 +188,7 @@ export class UmpireConsole {
       const midPoint = this.targetPoints === 15 ? 8 : 11;
       if (this.score1 === midPoint || this.score2 === midPoint) {
         this.set3SwapHappened = true;
-        this.showSwapNotice(isVi 
-          ? `⚡ Điểm số đạt mốc ${midPoint}! Cả hai đội đổi bên sân.`
-          : `⚡ Score reached ${midPoint}! Both teams must swap sides.`
-        );
+        this.showSwapNotice(`⚡ Score reached ${midPoint}! Both teams must swap sides.`);
         this.isCourtSwapped = !this.isCourtSwapped;
       }
     }
@@ -254,10 +250,7 @@ export class UmpireConsole {
         // Start next set
         const winnerName = s1 > s2 ? this.match.team1 : this.match.team2;
         
-        this.showSwapNotice(this.lang === 'vi' 
-          ? `Set ${this.currentSet} kết thúc! Đội ${winnerName} thắng set này. Chuẩn bị sang Set ${this.currentSet + 1}. Cả hai đội đổi bên sân.`
-          : `Set ${this.currentSet} completed! ${winnerName} won this set. Prepare for Set ${this.currentSet + 1}. Both teams must swap sides.`
-        );
+        this.showSwapNotice(`Set ${this.currentSet} completed! ${winnerName} won this set. Prepare for Set ${this.currentSet + 1}. Both teams must swap sides.`);
 
         this.score1 = 0;
         this.score2 = 0;
@@ -301,7 +294,6 @@ export class UmpireConsole {
   }
 
   showSwapNotice(text) {
-    const isVi = this.lang === 'vi';
     const modal = document.createElement('div');
     modal.className = 'swap-notice-modal-backdrop';
     modal.innerHTML = `
@@ -309,10 +301,10 @@ export class UmpireConsole {
         <div class="swap-icon-container mb-4 text-glow-volt animate-bounce" style="font-size: 3rem; filter: drop-shadow(0 0 12px rgba(132, 204, 22, 0.45));">
           🏸
         </div>
-        <h3 class="text-sm font-black text-glow-volt mb-2" style="font-size: 1.2rem; letter-spacing: 0.05em;">${isVi ? 'ĐỔI BÊN SÂN!' : 'SWAP COURTS!'}</h3>
+        <h3 class="text-sm font-black text-glow-volt mb-2" style="font-size: 1.2rem; letter-spacing: 0.05em;">SWAP COURTS!</h3>
         <p class="text-xs text-slate-200 mb-6 font-semibold" style="line-height: 1.5;">${text}</p>
         <button class="btn btn-sm btn-volt w-full py-2.5 font-bold uppercase tracking-wider" id="swap-notice-btn-ok">
-          ${isVi ? 'Đã hiểu & Tiếp tục' : 'Got It & Continue'}
+          Got It & Continue
         </button>
       </div>
     `;
@@ -333,48 +325,39 @@ export class UmpireConsole {
   }
 
   showMatchEndNotice(winnerName) {
-    const isVi = this.lang === 'vi';
     const stage = this.match.stage || 'Group Stage';
     
     // Stage-specific celebration details mapping
-    let title = isVi ? 'CHIẾN THẮNG TRẬN ĐẤU!' : 'WIN THE MATCH!';
-    let subtitle = isVi ? 'TRẬN ĐẤU ĐÃ KẾT THÚC' : 'MATCH COMPLETED';
-    let message = isVi 
-      ? `🎉 Chúc mừng đội **${winnerName}** đã xuất sắc giành chiến thắng trong trận đấu này! 🎉`
-      : `🎉 Congratulations to **${winnerName}** on winning this match! 🎉`;
+    let title = 'WIN THE MATCH!';
+    let subtitle = 'MATCH COMPLETED';
+    let message = `🎉 Congratulations to **${winnerName}** on winning this match! 🎉`;
     let icon = '🏸';
-    let labelWinner = isVi ? 'ĐỘI GIÀNH CHIẾN THẮNG' : 'MATCH WINNER';
+    let labelWinner = 'MATCH WINNER';
     let themeColor = '#84cc16'; // volt green
     let glowFilter = 'rgba(132, 204, 22, 0.45)';
 
     if (stage === 'Semi-finals') {
-      title = isVi ? 'CHÚC MỪNG CHIẾN THẮNG BÁN KẾT!' : 'CONGRATULATIONS ON WINNING!';
-      subtitle = isVi ? 'GIÀNH VÉ VÀO CHUNG KẾT' : 'QUALIFIED FOR THE FINALS';
-      message = isVi
-        ? `⚡ Tuyệt vời! Đội **${winnerName}** đã giành chiến thắng trận đấu Bán Kết và chính thức giành quyền bước vào trận Chung Kết tranh chức vô địch (Grand Final)! 🏆`
-        : `⚡ Spectacular! **${winnerName}** won the Semi-finals and officially qualified for the championship Grand Final! 🏆`;
+      title = 'CONGRATULATIONS ON WINNING!';
+      subtitle = 'QUALIFIED FOR THE FINALS';
+      message = `⚡ Spectacular! **${winnerName}** won the Semi-finals and officially qualified for the championship Grand Final! 🏆`;
       icon = '🏅';
-      labelWinner = isVi ? 'ĐỘI CHIẾN THẮNG BÁN KẾT' : 'SEMI-FINALS WINNER';
+      labelWinner = 'SEMI-FINALS WINNER';
       themeColor = '#06b6d4'; // Cyan
       glowFilter = 'rgba(6, 182, 212, 0.45)';
     } else if (stage === 'Grand Final') {
-      title = isVi ? 'NHÀ VÔ ĐỊCH GIẢI ĐẤU!' : 'TOURNAMENT CHAMPIONS!';
-      subtitle = isVi ? 'CÚP VÔ ĐỊCH GEAR GAMES 2026' : 'GEAR GAMES BADMINTON 2026 CUP';
-      message = isVi
-        ? `👑 TÂN VƯƠNG GIẢI ĐẤU! Xin được nhiệt liệt vinh danh nhà vô địch Gear Games Badminton 2026: **${winnerName}**! Chiến thắng lịch sử vô cùng xứng đáng! 🏆🥇`
-        : `👑 CHAMPIONS! Huge congratulations to the ultimate champions of the Gear Games 2026 Badminton Tournament: **${winnerName}**! A historic and well-deserved victory! 🏆🥇`;
+      title = 'TOURNAMENT CHAMPIONS!';
+      subtitle = 'GEAR GAMES BADMINTON 2026 CUP';
+      message = `👑 CHAMPIONS! Huge congratulations to the ultimate champions of the Gear Games 2026 Badminton Tournament: **${winnerName}**! A historic and well-deserved victory! 🏆🥇`;
       icon = '🏆';
-      labelWinner = isVi ? 'QUÁN QUÂN GIẢI ĐẤU' : 'TOURNAMENT CHAMPIONS';
+      labelWinner = 'TOURNAMENT CHAMPIONS';
       themeColor = '#fbbf24'; // Gold
       glowFilter = 'rgba(251, 191, 36, 0.5)';
     } else if (stage === 'Bronze Match') {
-      title = isVi ? 'ĐOẠT HẠNG BA CHUNG CUỘC!' : 'BRONZE MEDALISTS!';
-      subtitle = isVi ? 'HUY CHƯƠNG ĐỒNG THUỘC VỀ' : 'BRONZE MEDAL SECURED';
-      message = isVi
-        ? `🥉 Tuyệt vời! Đội **${winnerName}** đã giành chiến thắng trận tranh Hạng Ba và xuất sắc mang về tấm **Huy Chương Đồng** danh giá! 🥉`
-        : `🥉 Superb! **${winnerName}** won the Bronze Match and successfully claimed the prestigious **Bronze Medal**! 🥉`;
+      title = 'BRONZE MEDALISTS!';
+      subtitle = 'BRONZE MEDAL SECURED';
+      message = `🥉 Superb! **${winnerName}** won the Bronze Match and successfully claimed the prestigious **Bronze Medal**! 🥉`;
       icon = '🥉';
-      labelWinner = isVi ? 'HẠNG BA CHUNG CUỘC' : 'BRONZE WINNER';
+      labelWinner = 'BRONZE WINNER';
       themeColor = '#ea580c'; // Bronze orange
       glowFilter = 'rgba(234, 88, 12, 0.45)';
     }
@@ -407,7 +390,7 @@ export class UmpireConsole {
           <p class="text-xs text-slate-200 mb-6 font-semibold px-2" style="line-height: 1.6;">${message}</p>
           
           <button class="btn w-full py-3 font-extrabold uppercase tracking-wider text-xs flex items-center justify-center gap-2" id="match-end-btn-home" style="font-size: 0.85rem; background-color: ${themeColor}; color: #000; box-shadow: 0 4px 14px ${glowFilter}; border: none;">
-            🏠 ${isVi ? 'Quay về trang chủ' : 'Back to Homepage'}
+            🏠 Back to Homepage
           </button>
         </div>
       </div>
@@ -452,7 +435,6 @@ export class UmpireConsole {
 
     container.classList.remove('hidden');
 
-    const isVi = this.lang === 'vi';
     const isEven = (this.servingTeam === 'A' ? this.score1 : this.score2) % 2 === 0;
 
     // Players positioning side-by-side:
@@ -554,8 +536,8 @@ export class UmpireConsole {
             </span>
             <span class="text-xs font-bold text-slate-300">${this.match.pitch} | ${this.match.stage}</span>
           </div>
-          <h2 class="text-sm font-black m-0 text-glow-volt">${isVi ? 'BÀN TRỌNG TÀI ĐIỀU PHỐI' : 'UMPIRE CONTROL PANEL'}</h2>
-          <button class="btn btn-xs btn-neutral" id="umpire-btn-close">✕ ${isVi ? 'Thoát Sân' : 'Exit'}</button>
+          <h2 class="text-sm font-black m-0 text-glow-volt">UMPIRE CONTROL PANEL</h2>
+          <button class="btn btn-xs btn-neutral" id="umpire-btn-close">✕ Exit</button>
         </div>
 
         <!-- Scores and Set layout -->
@@ -582,7 +564,7 @@ export class UmpireConsole {
                 </div>
                 <button class="umpire-score-btn team-a-glow flex flex-col justify-center items-center" id="umpire-add-a">
                   <span class="score-num font-mono">${this.score1}</span>
-                  <span class="score-label font-bold text-2xs uppercase tracking-wider">${isVi ? 'CỘNG ĐIỂM ❶' : 'ADD POINT ❶'}</span>
+                  <span class="score-label font-bold text-2xs uppercase tracking-wider">ADD POINT ❶</span>
                 </button>
                 <div class="flex gap-2">
                   <button class="btn btn-xs btn-neutral flex-1 py-2 font-bold text-4xs" id="umpire-swap-players-1">🔄 Court Swap</button>
@@ -596,7 +578,7 @@ export class UmpireConsole {
                 </div>
                 <button class="umpire-score-btn team-b-glow flex flex-col justify-center items-center" id="umpire-add-b">
                   <span class="score-num font-mono">${this.score2}</span>
-                  <span class="score-label font-bold text-2xs uppercase tracking-wider">${isVi ? 'CỘNG ĐIỂM ❷' : 'ADD POINT ❷'}</span>
+                  <span class="score-label font-bold text-2xs uppercase tracking-wider">ADD POINT ❷</span>
                 </button>
                 <div class="flex gap-2">
                   <button class="btn btn-xs btn-neutral flex-1 py-2 font-bold text-4xs" id="umpire-swap-players-2">🔄 Court Swap</button>
@@ -608,16 +590,16 @@ export class UmpireConsole {
             <div class="bg-slate-950/60 p-4 rounded-lg border border-slate-900 grid grid-cols-3 gap-3 items-center">
               <div>
                 <button class="btn btn-sm btn-outline btn-block text-4xs py-2 font-bold" id="umpire-btn-undo" ${this.history.length === 0 ? 'disabled' : ''}>
-                  ↩ ${isVi ? 'Hoàn Tác (Undo)' : 'Undo Action'}
+                  ↩ Undo Action
                 </button>
               </div>
               <div>
                 <button class="btn btn-sm btn-outline btn-block text-4xs py-2 font-bold flex items-center justify-center gap-1.5" id="umpire-btn-serve">
-                  🏸 ${isVi ? 'Đổi Lượt Giao' : 'Toggle Serve'}
+                  🏸 Toggle Serve
                 </button>
               </div>
               <div class="text-center text-4xs text-slate-400 font-semibold flex flex-col items-center justify-center border-l border-slate-800">
-                <div>${isVi ? 'Giao cầu thuộc về:' : 'Current Serve:'}</div>
+                <div>Current Serve:</div>
                 <div class="font-extrabold text-volt mt-1 text-2xs uppercase">${this.servingTeam === 'A' ? 'Team 1' : 'Team 2'}</div>
               </div>
             </div>
@@ -625,7 +607,7 @@ export class UmpireConsole {
 
           <!-- Umpire Court Simulator Column (Grid Span 5) -->
           <div class="lg:col-span-5 flex flex-col items-center gap-4 bg-slate-950/45 p-4 rounded-lg border border-slate-900/60">
-            <h4 class="text-5xs font-bold uppercase tracking-widest text-slate-500 m-0">${isVi ? 'VỊ TRÍ ĐỨNG SÂN THỰC TẾ (BWF)' : 'ACTUAL PLAYER POSITIONS ON COURT'}</h4>
+            <h4 class="text-5xs font-bold uppercase tracking-widest text-slate-500 m-0">ACTUAL PLAYER POSITIONS ON COURT</h4>
             <div style="width: 100%; max-width: 250px; aspect-ratio: 3/5;">
               <svg class="court-svg umpire-court-svg" viewBox="0 0 300 500" width="100%" height="100%">
                 <defs>
@@ -710,7 +692,7 @@ export class UmpireConsole {
             </div>
             
             <div class="text-4xs text-slate-500 font-medium text-center max-w-[200px] leading-relaxed">
-              👉 <strong>Rule Book:</strong> Serve from **Right** on Even (${isVi ? '0,2,4' : '0,2,4'}) and **Left** on Odd (${isVi ? '1,3,5' : '1,3,5'}). Partners swap when winning own serve.
+              👉 <strong>Rule Book:</strong> Serve from **Right** on Even (0,2,4) and **Left** on Odd (1,3,5). Partners swap when winning own serve.
             </div>
           </div>
         </div>
@@ -719,7 +701,7 @@ export class UmpireConsole {
 
     // Event hooks
     document.getElementById('umpire-btn-close').onclick = () => {
-      if (confirm(isVi ? 'Bạn có muốn dừng điều phối trận này không? Trạng thái Live sẽ bị hủy.' : 'Do you want to exit the scoring room? The live status will be suspended.')) {
+      if (confirm('Do you want to exit the scoring room? The live status will be suspended.')) {
         this.close();
       }
     };

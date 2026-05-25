@@ -9,10 +9,10 @@ export class AdminPanel {
     this.isRef = false;
     this.refPitch = '';
     this.activeMatchId = null;
-    this.lang = 'vi';
+    this.lang = 'en';
     
     this.passkeys = {
-      'admin2026': { role: 'admin', label: 'Super Admin' },
+      'goodmintongg2026': { role: 'admin', label: 'Super Admin' },
       'ref15': { role: 'ref', pitch: 'Pitch 15', label: 'Pitch 15 Umpire' },
       'ref16': { role: 'ref', pitch: 'Pitch 16', label: 'Pitch 16 Umpire' },
       'ref20': { role: 'ref', pitch: 'Pitch 20', label: 'Pitch 20 Umpire' },
@@ -23,7 +23,7 @@ export class AdminPanel {
   }
 
   setLanguage(lang) {
-    this.lang = lang;
+    this.lang = 'en';
   }
 
   init() {
@@ -80,7 +80,7 @@ export class AdminPanel {
         if (this.isAdmin || (this.isRef && match.pitch === this.refPitch)) {
           this.openScoreModal(matchId);
         } else {
-          this.showToast(this.lang === 'vi' ? 'Bạn không có quyền chỉnh sửa trận đấu ở sân này!' : 'You are not authorized to edit matches on this pitch!', 'info');
+          this.showToast('You are not authorized to edit matches on this pitch!', 'info');
         }
       }
 
@@ -100,15 +100,13 @@ export class AdminPanel {
         if (this.isAdmin || (this.isRef && match.pitch === this.refPitch)) {
           this.openUmpireConsole(matchId);
         } else {
-          this.showToast(this.lang === 'vi' ? 'Bạn không có quyền trọng tài ở sân này!' : 'You are not authorized to umpire on this pitch!', 'info');
+          this.showToast('You are not authorized to umpire on this pitch!', 'info');
         }
       }
     });
   }
 
   checkMatchReadyState(match) {
-    const isVi = this.lang === 'vi';
-    
     // 1. Group Stage check
     if (
       (match.team1 && match.team1.includes('Place')) ||
@@ -116,9 +114,7 @@ export class AdminPanel {
     ) {
       return {
         ready: false,
-        reason: isVi 
-          ? `Chưa thể tiến hành trận đấu này! Vui lòng đợi Vòng Bảng kết thúc để xác định các đội dẫn đầu tham gia thi đấu.`
-          : `This match cannot be played yet! Please wait for the Group Stage to complete to decide the playing teams.`
+        reason: `This match cannot be played yet! Please wait for the Group Stage to complete to decide the playing teams.`
       };
     }
 
@@ -135,14 +131,10 @@ export class AdminPanel {
       const sf1Id = `SF1-${catSuffix}`;
       const sf1Match = this.state.matches.find(m => m.id === sf1Id);
       if (sf1Match && sf1Match.status !== 'Completed') {
-        const waitingLabel = isVi 
-          ? `Bán Kết 1 (${match.category})`
-          : `Semi-final 1 (${match.category})`;
+        const waitingLabel = `Semi-final 1 (${match.category})`;
         return {
           ready: false,
-          reason: isVi
-            ? `Trận đấu này đang chờ kết quả của trận bán kết **${waitingLabel}** hoàn thành để xác định cặp đấu.`
-            : `This match is waiting for the result of semi-final match **${waitingLabel}** to complete.`
+          reason: `This match is waiting for the result of semi-final match **${waitingLabel}** to complete.`
         };
       }
     }
@@ -151,14 +143,10 @@ export class AdminPanel {
       const sf2Id = `SF2-${catSuffix}`;
       const sf2Match = this.state.matches.find(m => m.id === sf2Id);
       if (sf2Match && sf2Match.status !== 'Completed') {
-        const waitingLabel = isVi 
-          ? `Bán Kết 2 (${match.category})`
-          : `Semi-final 2 (${match.category})`;
+        const waitingLabel = `Semi-final 2 (${match.category})`;
         return {
           ready: false,
-          reason: isVi
-            ? `Trận đấu này đang chờ kết quả của trận bán kết **${waitingLabel}** hoàn thành để xác định cặp đấu.`
-            : `This match is waiting for the result of semi-final match **${waitingLabel}** to complete.`
+          reason: `This match is waiting for the result of semi-final match **${waitingLabel}** to complete.`
         };
       }
     }
@@ -167,7 +155,6 @@ export class AdminPanel {
   }
 
   showUnreadyAlert(reason) {
-    const isVi = this.lang === 'vi';
     const modal = document.createElement('div');
     modal.className = 'swap-notice-modal-backdrop'; // reusable backdrop
     modal.innerHTML = `
@@ -176,13 +163,13 @@ export class AdminPanel {
           ⚠️
         </div>
         <h3 class="text-sm font-black text-danger mb-2" style="font-size: 1.15rem; letter-spacing: 0.05em;">
-          ${isVi ? 'TRẬN ĐẤU CHƯA SẴN SÀNG!' : 'MATCH NOT READY!'}
+          MATCH NOT READY!
         </h3>
         <p class="text-xs text-slate-200 mb-6 font-semibold px-2" style="line-height: 1.6;">
           ${reason}
         </p>
         <button class="btn btn-sm btn-danger w-full py-2.5 font-bold uppercase tracking-wider" id="unready-alert-btn-ok">
-          ${isVi ? 'Đã hiểu' : 'Got It'}
+          Got It
         </button>
       </div>
     `;
@@ -193,7 +180,6 @@ export class AdminPanel {
       setTimeout(() => modal.remove(), 300);
     };
   }
-
 
   openUmpireConsole(matchId) {
     if (!this.sync) return;
@@ -212,7 +198,7 @@ export class AdminPanel {
     sessionStorage.removeItem('badminton_authLabel');
     this.onUpdate();
     
-    const notification = this.lang === 'vi' ? 'Đã đăng xuất tài khoản!' : 'Logged out successfully!';
+    const notification = 'Logged out successfully!';
     this.showToast(notification, 'info');
   }
 
@@ -220,13 +206,11 @@ export class AdminPanel {
     const container = document.getElementById('admin-modal-container');
     if (!container) return;
 
-    const title = this.lang === 'vi' ? 'Đăng Nhập Cổng Điều Hợp' : 'Portal Login';
-    const desc = this.lang === 'vi' 
-      ? 'Nhập mã truy cập Admin hoặc mã Trọng tài (e.g. ref15, ref16...):' 
-      : 'Enter Admin or Umpire passkey (e.g., ref15, ref16, admin2026):';
-    const labelPass = this.lang === 'vi' ? 'Mã bảo mật' : 'Passkey';
-    const btnLogin = this.lang === 'vi' ? 'Đăng Nhập' : 'Login';
-    const btnCancel = this.lang === 'vi' ? 'Hủy' : 'Cancel';
+    const title = 'Portal Login';
+    const desc = 'Enter Admin or Umpire passkey:';
+    const labelPass = 'Passkey';
+    const btnLogin = 'Login';
+    const btnCancel = 'Cancel';
     
     container.innerHTML = `
       <div class="modal-card glass-card">
@@ -286,12 +270,10 @@ export class AdminPanel {
       document.getElementById('admin-modal-container').classList.add('hidden');
       this.onUpdate();
       
-      const text = this.lang === 'vi' 
-        ? `Đăng nhập thành công! Quyền: ${auth.label}.` 
-        : `Login success! Role: ${auth.label}.`;
+      const text = `Login success! Role: ${auth.label}.`;
       this.showToast(text, 'success');
     } else {
-      errorDiv.textContent = this.lang === 'vi' ? 'Mã bảo mật không đúng. Hãy thử lại.' : 'Incorrect passkey. Please try again.';
+      errorDiv.textContent = 'Incorrect passkey. Please try again.';
       errorDiv.classList.remove('hidden');
       input.classList.add('input-error');
       input.focus();
@@ -310,13 +292,13 @@ export class AdminPanel {
     const targetPoints = isGroup ? 15 : 21;
     const maxPoints = isGroup ? 21 : 30;
 
-    const modalTitle = this.lang === 'vi' ? 'Nhập Điểm Trận Đấu' : 'Match Score Editor';
-    const lblSets = this.lang === 'vi' ? 'Set' : 'Set';
+    const modalTitle = 'Match Score Editor';
+    const lblSets = 'Set';
     const lblT1 = match.team1;
     const lblT2 = match.team2;
-    const btnSave = this.lang === 'vi' ? 'Lưu Kết Quả' : 'Save Score';
-    const btnCancel = this.lang === 'vi' ? 'Hủy' : 'Cancel';
-    const btnReset = this.lang === 'vi' ? 'Xóa Điểm' : 'Clear Score';
+    const btnSave = 'Save Score';
+    const btnCancel = 'Cancel';
+    const btnReset = 'Clear Score';
 
     const s1_t1 = match.sets[0] ? match.sets[0].t1 : '';
     const s1_t2 = match.sets[0] ? match.sets[0].t2 : '';
@@ -333,9 +315,9 @@ export class AdminPanel {
         </div>
         
         <div class="score-team-headers grid grid-cols-5 gap-2 mb-2 text-xs font-semibold text-muted text-center">
-          <div class="col-span-2 text-left">${this.lang === 'vi' ? 'Đội 1' : 'Team 1'}</div>
+          <div class="col-span-2 text-left">Team 1</div>
           <div>VS</div>
-          <div class="col-span-2 text-right">${this.lang === 'vi' ? 'Đội 2' : 'Team 2'}</div>
+          <div class="col-span-2 text-right">Team 2</div>
         </div>
 
         <div class="score-team-names grid grid-cols-5 gap-2 mb-4 text-sm font-bold text-center items-center">
@@ -484,10 +466,10 @@ export class AdminPanel {
   }
 
   handleClearScore(matchId) {
-    if (confirm(this.lang === 'vi' ? 'Bạn có chắc chắn muốn xóa điểm trận này không?' : 'Are you sure you want to clear the score for this match?')) {
+    if (confirm('Are you sure you want to clear the score for this match?')) {
       this.state.updateMatchScore(matchId, [], "", "", "Scheduled");
       document.getElementById('score-modal-container').classList.add('hidden');
-      this.showToast(this.lang === 'vi' ? 'Đã xóa điểm trận đấu.' : 'Match score cleared.', 'info');
+      this.showToast('Match score cleared.', 'info');
     }
   }
 
@@ -504,20 +486,14 @@ export class AdminPanel {
     // 1. Validate Set 1
     const v1 = this.validateSetScore(s1t1, s1t2, targetPoints);
     if (!v1.valid) {
-      this.showInputError(errorDiv, this.lang === 'vi' 
-        ? `Set 1 chưa hợp lệ. Đội thắng phải đạt ít nhất ${targetPoints} điểm và hơn đối thủ 2 điểm (hoặc chạm mốc giới hạn ${targetPoints === 15 ? 21 : 30} điểm).` 
-        : `Set 1 is invalid. Winner must reach ${targetPoints} and lead by 2, or reach cap limit of ${targetPoints === 15 ? 21 : 30} points.`
-      );
+      this.showInputError(errorDiv, `Set 1 is invalid. Winner must reach ${targetPoints} and lead by 2, or reach cap limit of ${targetPoints === 15 ? 21 : 30} points.`);
       return;
     }
 
     // 2. Validate Set 2
     const v2 = this.validateSetScore(s2t1, s2t2, targetPoints);
     if (!v2.valid) {
-      this.showInputError(errorDiv, this.lang === 'vi' 
-        ? `Set 2 chưa hợp lệ. Đội thắng phải đạt ít nhất ${targetPoints} điểm và hơn đối thủ 2 điểm.` 
-        : `Set 2 is invalid. Winner must reach at least ${targetPoints} and lead by 2.`
-      );
+      this.showInputError(errorDiv, `Set 2 is invalid. Winner must reach at least ${targetPoints} and lead by 2.`);
       return;
     }
 
@@ -536,10 +512,7 @@ export class AdminPanel {
       
       const v3 = this.validateSetScore(s3t1, s3t2, targetPoints);
       if (!v3.valid) {
-        this.showInputError(errorDiv, this.lang === 'vi' 
-          ? `Tỉ số Set 1 & 2 là hòa 1-1. Bạn phải nhập thông tin Set 3 hợp lệ.` 
-          : `Match is tied 1-1 after 2 sets. You must provide a valid Set 3 score.`
-        );
+        this.showInputError(errorDiv, `Match is tied 1-1 after 2 sets. You must provide a valid Set 3 score.`);
         return;
       }
       
@@ -554,7 +527,7 @@ export class AdminPanel {
     
     // Close modal & notify
     document.getElementById('score-modal-container').classList.add('hidden');
-    this.showToast(this.lang === 'vi' ? 'Đã cập nhật kết quả thành công!' : 'Score updated successfully!', 'success');
+    this.showToast('Score updated successfully!', 'success');
   }
 
   showInputError(div, text) {

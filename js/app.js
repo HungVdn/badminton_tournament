@@ -136,6 +136,92 @@ class BadmintonApp {
     setTimeout(() => this.updateActivePill(), 100);
   }
 
+  getTeamRank(teamName, category) {
+    const standings = this.state.calculateStandings(category);
+    const suffix = category === "Men's Doubles" ? "MD" : "XD";
+    const fMatch = this.state.matches.find(m => m.id === `F-${suffix}`);
+    const bMatch = this.state.matches.find(m => m.id === `B-${suffix}`);
+    
+    if (fMatch && fMatch.status === 'Completed') {
+      if (fMatch.winner === teamName) return 1;
+      if (fMatch.team1 === teamName || fMatch.team2 === teamName) return 2;
+    }
+    if (bMatch && bMatch.status === 'Completed') {
+      if (bMatch.winner === teamName) return 3;
+      if (bMatch.team1 === teamName || bMatch.team2 === teamName) return 4;
+    }
+    
+    const rankIndex = standings.findIndex(t => t.name === teamName);
+    return rankIndex !== -1 ? rankIndex + 1 : '-';
+  }
+
+  getTeamStats(teamName, category) {
+    const standings = this.state.calculateStandings(category);
+    const groupStat = standings.find(t => t.name === teamName) || { points: 0 };
+    
+    const completedMatches = this.state.matches.filter(m => 
+      m.category === category && 
+      m.status === 'Completed' && 
+      (m.team1 === teamName || m.team2 === teamName)
+    );
+
+    const played = completedMatches.length;
+    const wins = completedMatches.filter(m => m.winner === teamName).length;
+    const losses = played - wins;
+    const winPercent = played > 0 ? Math.round((wins / played) * 100) : 0;
+
+    let setsWon = 0;
+    let setsLost = 0;
+    let pointsWon = 0;
+    let pointsLost = 0;
+
+    completedMatches.forEach(m => {
+      const isTeam1 = (m.team1 === teamName);
+      const s1 = Number(m.score1) || 0;
+      const s2 = Number(m.score2) || 0;
+      
+      if (isTeam1) {
+        setsWon += s1;
+        setsLost += s2;
+      } else {
+        setsWon += s2;
+        setsLost += s1;
+      }
+      
+      if (m.sets) {
+        m.sets.forEach(set => {
+          const p1 = Number(set.t1) || 0;
+          const p2 = Number(set.t2) || 0;
+          if (isTeam1) {
+            pointsWon += p1;
+            pointsLost += p2;
+          } else {
+            pointsWon += p2;
+            pointsLost += p1;
+          }
+        });
+      }
+    });
+
+    const netSets = setsWon - setsLost;
+    const netPoints = pointsWon - pointsLost;
+
+    return {
+      played,
+      wins,
+      losses,
+      pts: groupStat.points,
+      setsWon,
+      setsLost,
+      netSets,
+      pointsWon,
+      pointsLost,
+      netPoints,
+      winPercent,
+      completedMatches
+    };
+  }
+
   setupDOM() {
     // Initial static text bindings depending on language
     this.translateStaticElements();
@@ -155,28 +241,14 @@ class BadmintonApp {
 
     window.addEventListener('resize', () => this.updateActivePill());
 
-    // Language Toggle
-    const langBtn = document.getElementById('btn-lang-toggle');
-    if (langBtn) {
-      langBtn.addEventListener('click', () => {
-        this.lang = this.lang === 'vi' ? 'en' : 'vi';
-        localStorage.setItem('badminton_lang', this.lang);
-        this.admin.setLanguage(this.lang);
-        if (this.courtSimulator) this.courtSimulator.setLanguage(this.lang);
-        this.translateStaticElements();
-        this.renderActiveView();
-        this.updateNavbar();
-      });
-    }
-
     // Reset Database (Admin Mode Only)
     const resetBtn = document.getElementById('btn-reset-db');
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
         if (!this.admin.isAdmin) return;
-        if (confirm(this.lang === 'vi' ? 'CẢNH BÁO: Hành động này sẽ đặt lại toàn bộ dữ liệu giải đấu về trạng thái ban đầu. Bạn có muốn tiếp tục?' : 'WARNING: This will reset all tournament scores and standings to defaults. Proceed?')) {
+        if (confirm('WARNING: This will reset all tournament scores and standings to defaults. Proceed?')) {
           this.state.resetToDefault();
-          this.admin.showToast(this.lang === 'vi' ? 'Đã thiết lập lại dữ liệu!' : 'Database reset to default!', 'success');
+          this.admin.showToast('Database reset to default!', 'success');
         }
       });
     }
@@ -256,33 +328,10 @@ class BadmintonApp {
   }
 
   translateStaticElements() {
-    const isVi = this.lang === 'vi';
-    
-    // Tab text translation
-    const tabTexts = {
-      dashboard: isVi ? '🏠 Bảng Tin' : '🏠 Dashboard',
-      standings: isVi ? '📊 Xếp Hạng' : '📊 Standings',
-      fixtures: isVi ? '📅 Lịch Thi Đấu' : '📅 Fixtures',
-      bracket: isVi ? '🌳 Sơ Đồ Cây' : '🌳 Bracket',
-      results: isVi ? '🏆 Bảng Vàng' : '🏆 Final Results',
-      rules: isVi ? '📘 Luật Đánh Đôi' : '📘 Doubles Rules',
-      teams: isVi ? '👥 Đội Chơi' : '👥 Teams'
-    };
-
-    Object.keys(tabTexts).forEach(tabId => {
-      const tabEl = document.querySelector(`.nav-tab[data-tab="${tabId}"] span`);
-      if (tabEl) tabEl.textContent = tabTexts[tabId];
-    });
-
-    // Language Button Text
-    const langBtnSpan = document.querySelector('#btn-lang-toggle span');
-    if (langBtnSpan) {
-      langBtnSpan.textContent = isVi ? 'ENGLISH' : 'TIẾNG VIỆT';
-    }
+    // Strictly English only
   }
 
   updateNavbar() {
-    const isVi = this.lang === 'vi';
     const adminBtn = document.getElementById('btn-toggle-admin');
     const resetBtn = document.getElementById('btn-reset-db');
     
@@ -292,7 +341,7 @@ class BadmintonApp {
       const isLoggedIn = this.admin.isAdmin || this.admin.isRef;
       
       if (isLoggedIn) {
-        const label = sessionStorage.getItem('badminton_authLabel') || (this.admin.isAdmin ? 'Super Admin' : (this.admin.refPitch + ' Referee'));
+        const label = sessionStorage.getItem('badminton_authLabel') || (this.admin.isAdmin ? 'Super Admin' : (this.admin.refPitch + ' Umpire'));
         
         if (!welcomeSpan) {
           welcomeSpan = document.createElement('span');
@@ -300,10 +349,10 @@ class BadmintonApp {
           welcomeSpan.className = 'text-5xs text-slate-300 font-extrabold tracking-wide uppercase mr-1 flex items-center gap-1.5';
           adminBtn.parentNode.insertBefore(welcomeSpan, adminBtn);
         }
-        welcomeSpan.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-volt pulse-dot"></span> ${isVi ? 'Xin chào,' : 'Welcome,'} <span class="text-volt font-black">${label}</span>`;
+        welcomeSpan.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-volt pulse-dot"></span> Welcome, <span class="text-volt font-black">${label}</span>`;
         welcomeSpan.classList.remove('hidden');
 
-        adminBtn.innerHTML = `✕ <span>${isVi ? 'Đăng Xuất' : 'Logout'}</span>`;
+        adminBtn.innerHTML = `✕ <span>Logout</span>`;
         adminBtn.className = 'btn btn-xs btn-danger font-bold flex items-center gap-1';
         
         if (resetBtn && this.admin.isAdmin) resetBtn.classList.remove('hidden');
@@ -312,7 +361,7 @@ class BadmintonApp {
           welcomeSpan.classList.add('hidden');
           welcomeSpan.innerHTML = '';
         }
-        adminBtn.innerHTML = `🔐 <span>${isVi ? 'Đăng Nhập Admin' : 'Admin Login'}</span>`;
+        adminBtn.innerHTML = `🔐 <span>Admin Login</span>`;
         adminBtn.className = 'btn btn-xs btn-outline flex items-center gap-1';
         
         if (resetBtn) resetBtn.classList.add('hidden');
@@ -359,7 +408,6 @@ class BadmintonApp {
   }
 
   renderDashboard(container) {
-    const isVi = this.lang === 'vi';
     const totalMatches = this.state.matches.length;
     const completedMatches = this.state.matches.filter(m => m.status === 'Completed').length;
     const completionPercent = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
@@ -374,9 +422,9 @@ class BadmintonApp {
       }
     });
 
-    const titleText = isVi ? 'GIẢI VÔ ĐỊCH CẦU LÔNG GEAR GAMES 2026' : 'GEAR GAMES BADMINTON CHAMPIONSHIP 2026';
-    const subText = isVi ? 'Hệ thống cập nhật xếp hạng, tỷ số & sơ đồ trực tiếp' : 'Live standings, schedule fixtures & bracket generator';
-    const countTitle = isVi ? 'THỜI GIAN KHAI MẠC' : 'COUNTDOWN TO TOURNAMENT';
+    const titleText = 'GEAR GAMES BADMINTON CHAMPIONSHIP 2026';
+    const subText = 'Live standings, schedule fixtures & bracket generator';
+    const countTitle = 'COUNTDOWN TO TOURNAMENT';
     
     container.innerHTML = `
       <div class="hero-section glass-card mb-6">
@@ -388,19 +436,19 @@ class BadmintonApp {
           <div class="grid grid-cols-4 gap-4 max-w-sm mx-auto">
             <div class="countdown-box">
               <span id="cd-days" class="cd-num">00</span>
-              <span class="cd-lbl">${isVi ? 'Ngày' : 'Days'}</span>
+              <span class="cd-lbl">Days</span>
             </div>
             <div class="countdown-box">
               <span id="cd-hours" class="cd-num">00</span>
-              <span class="cd-lbl">${isVi ? 'Giờ' : 'Hrs'}</span>
+              <span class="cd-lbl">Hrs</span>
             </div>
             <div class="countdown-box">
               <span id="cd-minutes" class="cd-num">00</span>
-              <span class="cd-lbl">${isVi ? 'Phút' : 'Mins'}</span>
+              <span class="cd-lbl">Mins</span>
             </div>
             <div class="countdown-box">
               <span id="cd-seconds" class="cd-num">00</span>
-              <span class="cd-lbl">${isVi ? 'Giây' : 'Secs'}</span>
+              <span class="cd-lbl">Secs</span>
             </div>
           </div>
           <div class="text-xs text-muted mt-3">⚡ 31 May 2026 @ 13:30 | Alpha Era court ⚡</div>
@@ -412,7 +460,7 @@ class BadmintonApp {
           <div class="stat-icon text-volt">🏆</div>
           <div class="stat-info">
             <span class="stat-value">${completedMatches}/${totalMatches}</span>
-            <span class="stat-label">${isVi ? 'Trận Đã Đấu' : 'Matches Completed'}</span>
+            <span class="stat-label">Matches Completed</span>
           </div>
           <div class="stat-progress-bar mt-3">
             <div class="progress-fill glow-volt" style="width: ${completionPercent}%"></div>
@@ -424,7 +472,7 @@ class BadmintonApp {
           <div class="stat-icon text-cyan">🔥</div>
           <div class="stat-info">
             <span class="stat-value">${totalPointsScored}</span>
-            <span class="stat-label">${isVi ? 'Tổng Điểm Đã Ghi' : 'Total Points Scored'}</span>
+            <span class="stat-label">Total Points Scored</span>
           </div>
           <div class="stat-progress-bar mt-3">
             <div class="progress-fill glow-cyan" style="width: 100%"></div>
@@ -435,8 +483,8 @@ class BadmintonApp {
         <div class="dashboard-stat-card glass-card border-glow-purple">
           <div class="stat-icon text-purple">👥</div>
           <div class="stat-info">
-            <span class="stat-value">10 Đội</span>
-            <span class="stat-label">${isVi ? '20 Vận Động Viên' : '20 Registered Players'}</span>
+            <span class="stat-value">10 Teams</span>
+            <span class="stat-label">20 Registered Players</span>
           </div>
           <div class="stat-progress-bar mt-3">
             <div class="progress-fill glow-purple" style="width: 100%"></div>
@@ -451,13 +499,13 @@ class BadmintonApp {
           <h3 class="m-0 flex items-center gap-2">
             <span class="live-dot pulse-red"></span>
             <span class="text-glow-volt font-black uppercase text-xs" style="letter-spacing: 0.05em;">
-              ${isVi ? '🔴 TRUNG TÂM SÂN ĐẤU LIVE' : '🔴 LIVE COURT TRACKER'}
+              🔴 LIVE COURT TRACKER
             </span>
           </h3>
           
           <!-- Simulation switcher -->
           <div class="flex items-center gap-2.5 bg-slate-900/70 px-3 py-1.5 rounded border border-slate-800 text-4xs">
-            <span class="font-bold text-slate-400">🤖 ${isVi ? 'MÔ PHỎNG LIVE DEMO' : 'LIVE DEMO MOCK'}</span>
+            <span class="font-bold text-slate-400">🤖 LIVE DEMO MOCK</span>
             <label class="demo-switch-toggle" style="position: relative; display: inline-block; width: 34px; height: 18px;">
               <input type="checkbox" id="demo-mock-switch" style="opacity: 0; width: 0; height: 0;" ${localStorage.getItem('badminton_demo_mock_active') === 'true' ? 'checked' : ''}>
               <span class="demo-switch-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .3s; border-radius: 34px; border: 1px solid rgba(255,255,255,0.05);"></span>
@@ -475,7 +523,7 @@ class BadmintonApp {
         <div class="glass-card">
           <h3 class="flex items-center justify-between mb-4">
             <span class="text-volt font-bold">💎 Men's Doubles Leaderboard</span>
-            <button class="btn btn-xs btn-outline" id="dash-goto-md">${isVi ? 'Xem Chi Tiết' : 'View Full'}</button>
+            <button class="btn btn-xs btn-outline" id="dash-goto-md">View Full</button>
           </h3>
           <div class="overflow-x-auto">
             ${this.renderMiniStandingsTable("Men's Doubles")}
@@ -486,7 +534,7 @@ class BadmintonApp {
         <div class="glass-card">
           <h3 class="flex items-center justify-between mb-4">
             <span class="text-cyan font-bold">🔮 Mixed's Doubles Leaderboard</span>
-            <button class="btn btn-xs btn-outline" id="dash-goto-xd">${isVi ? 'Xem Chi Tiết' : 'View Full'}</button>
+            <button class="btn btn-xs btn-outline" id="dash-goto-xd">View Full</button>
           </h3>
           <div class="overflow-x-auto">
             ${this.renderMiniStandingsTable("Mixed's Doubles")}
@@ -502,7 +550,6 @@ class BadmintonApp {
 
   renderMiniStandingsTable(category) {
     const standings = this.state.calculateStandings(category);
-    const isVi = this.lang === 'vi';
     
     let rowsHtml = standings.slice(0, 3).map((team, idx) => {
       const icon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
@@ -519,7 +566,7 @@ class BadmintonApp {
     }).join('');
 
     if (standings.length === 0) {
-      rowsHtml = `<tr><td colspan="6" class="text-center text-muted py-4">${isVi ? 'Không có dữ liệu' : 'No data available'}</td></tr>`;
+      rowsHtml = `<tr><td colspan="6" class="text-center text-muted py-4">No data available</td></tr>`;
     }
 
     return `
@@ -527,11 +574,11 @@ class BadmintonApp {
         <thead>
           <tr>
             <th class="text-center">#</th>
-            <th>${isVi ? 'Đội Chơi' : 'Team'}</th>
-            <th class="text-center">${isVi ? 'Điểm Win' : 'Wins'}</th>
-            <th class="text-center">${isVi ? 'Trận' : 'Pld'}</th>
-            <th class="text-center">${isVi ? 'Hiệu Set' : 'Sets'}</th>
-            <th class="text-center">${isVi ? 'Tổng Điểm' : 'Points'}</th>
+            <th>Team</th>
+            <th class="text-center">Wins</th>
+            <th class="text-center">Pld</th>
+            <th class="text-center">Sets</th>
+            <th class="text-center">Points</th>
           </tr>
         </thead>
         <tbody>
@@ -542,18 +589,16 @@ class BadmintonApp {
   }
 
   renderStandings(container) {
-    const isVi = this.lang === 'vi';
-    
     container.innerHTML = `
       <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
         <div>
-          <h2 class="view-title text-glow-volt m-0">📊 ${isVi ? 'Bảng Xếp Hạng Giải Đấu' : 'Tournament Leaderboards'}</h2>
-          <p class="view-subtitle">${isVi ? 'Cập nhật điểm và phân hạng trực tiếp' : 'Real-time calculated ranks and tie-breaker statistics'}</p>
+          <h2 class="view-title text-glow-volt m-0">📊 Tournament Leaderboards</h2>
+          <p class="view-subtitle">Real-time calculated ranks and tie-breaker statistics</p>
         </div>
         
         <div class="flex items-center gap-2 bg-slate-900/60 p-1.5 rounded-lg border border-slate-700/40">
           <button class="btn btn-sm btn-filter ${this.activeCategoryFilter === 'all' ? 'active bg-slate-800 text-volt' : 'btn-text'}" id="std-filter-all">
-            ${isVi ? 'Tất Cả' : 'All'}
+            All
           </button>
           <button class="btn btn-sm btn-filter ${this.activeCategoryFilter === 'md' ? 'active bg-slate-800 text-volt' : 'btn-text'}" id="std-filter-md">
             Men's Doubles
@@ -577,7 +622,6 @@ class BadmintonApp {
   }
 
   renderCategoryStandings(category) {
-    const isVi = this.lang === 'vi';
     const standings = this.state.calculateStandings(category);
     const isMD = category === "Men's Doubles";
     const headerColor = isMD ? 'text-volt' : 'text-cyan';
@@ -592,15 +636,15 @@ class BadmintonApp {
       let rankBadge = `<span class="rank-circle font-bold ${rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : ''}">${rank}</span>`;
       let advanceTag = '';
       if (isTop4) {
-        advanceTag = `<span class="advance-tag neon-green">${isVi ? 'BÁN KẾT' : 'SEMIS'}</span>`;
+        advanceTag = `<span class="advance-tag neon-green">SEMIS</span>`;
       } else {
-        advanceTag = `<span class="advance-tag text-muted">${isVi ? 'LOẠI' : 'OUT'}</span>`;
+        advanceTag = `<span class="advance-tag neon-red">OUT</span>`;
       }
 
       // Check if team has finished all of their matches (4 matches total in a 5-team group)
       const isTeamFinished = team.played === standings.length - 1;
       const finishedBadge = isTeamFinished
-        ? `<span class="finished-tag">${isVi ? 'Đủ 4 trận' : '4 Matches'}</span>`
+        ? `<span class="finished-tag">4 Matches</span>`
         : '';
 
       // Check head-to-head status if identical matches
@@ -646,13 +690,13 @@ class BadmintonApp {
             <thead>
               <tr>
                 <th class="text-center" style="width: 60px;">#</th>
-                <th>${isVi ? 'Đội Chơi / Thành Viên' : 'Team / Members'}</th>
-                <th class="text-center">${isVi ? 'Tổng Điểm' : 'Pts'}</th>
-                <th class="text-center">${isVi ? 'Trận' : 'Pld'}</th>
-                <th class="text-center">${isVi ? 'Thắng' : 'Won'}</th>
-                <th class="text-center">${isVi ? 'Thua' : 'Lost'}</th>
-                <th class="text-center">${isVi ? 'Hiệu Số Ván' : 'Sets (Net)'}</th>
-                <th class="text-center">${isVi ? 'Tổng Điểm Ghi' : 'Set Pts (Net)'}</th>
+                <th>Team / Members</th>
+                <th class="text-center">Pts</th>
+                <th class="text-center">Pld</th>
+                <th class="text-center">Won</th>
+                <th class="text-center">Lost</th>
+                <th class="text-center">Sets (Net)</th>
+                <th class="text-center">Set Pts (Net)</th>
               </tr>
             </thead>
             <tbody>
@@ -663,17 +707,13 @@ class BadmintonApp {
         
         <div class="p-3 bg-slate-900/40 rounded-lg mt-4 border border-slate-800 flex items-center gap-2 text-xs text-muted">
           <span>💡</span>
-          <span>${isVi 
-            ? '<strong>Quy tắc xếp hạng:</strong> Top 4 đội sẽ tự động giành vé vào Bán Kết. Ưu tiên xét: Thắng ván ➔ Hiệu số hiệp ➔ Đối kháng trực tiếp ➔ Hiệu số điểm.' 
-            : '<strong>Ranking rule:</strong> Top 4 teams automatically advance to the Semi-finals. Tie-breakers: Match wins ➔ Net Sets ➔ Head-to-Head ➔ Net Points.'}
+          <span><strong>Ranking rule:</strong> Top 4 teams automatically advance to the Semi-finals. Tie-breakers: Match wins ➔ Net Sets ➔ Head-to-Head ➔ Net Points.</span>
         </div>
       </div>
     `;
   }
 
   renderFixtures(viewContainer) {
-    const isVi = this.lang === 'vi';
-    
     let contentHtml = '';
     if (this.activeCategoryFilter === 'all') {
       contentHtml = `
@@ -699,13 +739,13 @@ class BadmintonApp {
     viewContainer.innerHTML = `
       <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
         <div>
-          <h2 class="view-title text-glow-volt m-0"><svg class="nav-icon mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px; vertical-align: middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ${isVi ? 'Lịch Thi Đấu & Kết Quả' : 'Match Schedule & Results'}</h2>
-          <p class="view-subtitle">${isVi ? 'Theo dõi thời gian, sân thi đấu và tỉ số trực tiếp' : 'List of scheduled tournament fixtures and match scores'}</p>
+          <h2 class="view-title text-glow-volt m-0"><svg class="nav-icon mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px; vertical-align: middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Match Schedule & Results</h2>
+          <p class="view-subtitle">List of scheduled tournament fixtures and match scores</p>
         </div>
         
         <div class="flex items-center gap-2 bg-slate-900/60 p-1.5 rounded-lg border border-slate-700/40">
           <button class="btn btn-sm btn-filter ${this.activeCategoryFilter === 'all' ? 'active bg-slate-800 text-volt' : 'btn-text'}" id="fix-filter-all">
-            ${isVi ? 'Tất Cả' : 'All'}
+            All
           </button>
           <button class="btn btn-sm btn-filter ${this.activeCategoryFilter === 'md' ? 'active bg-slate-800 text-volt' : 'btn-text'}" id="fix-filter-md">
             Men's Doubles
@@ -721,19 +761,19 @@ class BadmintonApp {
         <div class="filter-search-wrapper">
           <span class="filter-search-icon">🔍</span>
           <input type="text" class="filter-search-input" id="fixture-search" 
-                 placeholder="${isVi ? 'Tìm tên đội chơi hoặc vận động viên...' : 'Search team or player name...'}" 
+                 placeholder="Search team or player name..." 
                  value="${this.fixtureSearchText}">
         </div>
 
         <div class="filter-pills">
           <button class="filter-pill ${this.fixtureStatusFilter === 'all' ? 'active' : ''}" data-status="all">
-            ${isVi ? 'Tất cả trạng thái' : 'All'}
+            All
           </button>
           <button class="filter-pill ${this.fixtureStatusFilter === 'Scheduled' ? 'active' : ''}" data-status="Scheduled">
-            ${isVi ? 'Lịch thi đấu' : 'Scheduled'}
+            Scheduled
           </button>
           <button class="filter-pill ${this.fixtureStatusFilter === 'Completed' ? 'active' : ''}" data-status="Completed">
-            ${isVi ? 'Đã kết thúc' : 'Completed'}
+            Completed
           </button>
         </div>
       </div>
@@ -781,7 +821,6 @@ class BadmintonApp {
   }
 
   renderCategoryFixtures(category) {
-    const isVi = this.lang === 'vi';
     const isMD = category === "Men's Doubles";
     const title = isMD ? "Men's Doubles" : "Mixed's Doubles";
     
@@ -811,10 +850,10 @@ class BadmintonApp {
     const grandFinal = catMatches.filter(m => m.stage === 'Grand Final');
     const bronzeMatch = catMatches.filter(m => m.stage === 'Bronze Match');
 
-    const grandFinalBadge = isVi ? 'TRẬN CHUNG KẾT' : 'GRAND CHAMPIONSHIP';
-    const bronzeBadge = isVi ? 'TRANH HẠNG BA' : 'BRONZE FINALS';
-    const semisBadge = isVi ? 'VÒNG BÁN KẾT' : 'SEMIFINALS STAGE';
-    const groupBadge = isVi ? 'VÒNG BẢNG XOAY VÒNG' : 'GROUP STAGE QUALIFYING';
+    const grandFinalBadge = 'GRAND CHAMPIONSHIP';
+    const bronzeBadge = 'BRONZE FINALS';
+    const semisBadge = 'SEMIFINALS STAGE';
+    const groupBadge = 'GROUP STAGE QUALIFYING';
 
     const renderStageSection = (matches, stageTitle) => {
       if (matches.length === 0) return '';
@@ -840,20 +879,25 @@ class BadmintonApp {
         </h3>
         
         <div class="flex flex-col gap-4">
-          ${renderStageSection(grandFinal, grandFinalBadge)}
-          ${renderStageSection(bronzeMatch, bronzeBadge)}
-          ${renderStageSection(semis, semisBadge)}
-          ${renderStageSection(groupMatches, groupBadge)}
+          ${catMatches.length === 0 ? `
+            <div class="glass-card text-center py-8 px-4 flex flex-col items-center justify-center gap-2 border border-dashed border-slate-800/60" style="background: rgba(15, 23, 42, 0.15); border-radius: 12px;">
+              <span class="text-xl">📅</span>
+              <span class="text-slate-400 font-semibold text-xs">No match scheduled/completed</span>
+            </div>
+          ` : `
+            ${renderStageSection(grandFinal, grandFinalBadge)}
+            ${renderStageSection(bronzeMatch, bronzeBadge)}
+            ${renderStageSection(semis, semisBadge)}
+            ${renderStageSection(groupMatches, groupBadge)}
+          `}
         </div>
       </div>
     `;
   }
 
   renderMatchCards(matches) {
-    const isVi = this.lang === 'vi';
-    
     if (matches.length === 0) {
-      return `<div class="col-span-2 text-center text-muted py-6">${isVi ? 'Không tìm thấy trận đấu nào' : 'No matches found'}</div>`;
+      return `<div class="col-span-2 text-center text-muted py-6">No matches found</div>`;
     }
 
     const liveMatches = this.sync.getLiveMatches();
@@ -874,24 +918,24 @@ class BadmintonApp {
         highlightClass = 'border-glow-volt bg-volt-gradient';
         statusBadge = `
           <span class="match-badge flex items-center gap-1 font-extrabold" style="background-color: var(--danger); color: #fff; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);">
-            <span class="live-dot-pulse"></span> ${isVi ? 'ĐANG ĐẤU' : 'LIVE'}
+            <span class="live-dot-pulse"></span> LIVE
           </span>
         `;
       } else if (match.stage === 'Grand Final') {
         highlightClass = 'border-glow-gold bg-gold-gradient';
         statusBadge = isCompleted 
-          ? `<span class="match-badge flex items-center gap-1 font-extrabold" style="background-color: var(--gold); color: #000; box-shadow: 0 0 8px rgba(245, 158, 11, 0.45);"><svg class="w-3 h-3" stroke="currentColor" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0; width: 12px; height: 12px;"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"/><path d="M12 2a6 6 0 0 1 6 6v3a6 6 0 0 1-6 6h0a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"/></svg>${isVi ? 'CHUNG KẾT' : 'GRAND FINAL'}</span>`
-          : `<span class="match-badge scheduled" style="border: 1px solid var(--gold); color: var(--gold);">${isVi ? 'CHUNG KẾT' : 'GRAND FINAL'}</span>`;
+          ? `<span class="match-badge flex items-center gap-1 font-extrabold" style="background-color: var(--gold); color: #000; box-shadow: 0 0 8px rgba(245, 158, 11, 0.45);"><svg class="w-3 h-3" stroke="currentColor" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0; width: 12px; height: 12px;"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"/><path d="M12 2a6 6 0 0 1 6 6v3a6 6 0 0 1-6 6h0a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"/></svg>GRAND FINAL</span>`
+          : `<span class="match-badge scheduled" style="border: 1px solid var(--gold); color: var(--gold);">GRAND FINAL</span>`;
       } else if (match.stage === 'Bronze Match') {
         highlightClass = 'border-glow-bronze bg-bronze-gradient';
         statusBadge = isCompleted 
-          ? `<span class="match-badge flex items-center gap-1 font-extrabold" style="background-color: var(--bronze); color: #000;"><svg class="w-3 h-3" stroke="currentColor" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0; width: 12px; height: 12px;"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>${isVi ? 'TRANH HẠNG 3' : 'BRONZE MATCH'}</span>`
-          : `<span class="match-badge scheduled" style="border: 1px solid var(--bronze); color: var(--bronze);">${isVi ? 'TRANH HẠNG 3' : 'BRONZE MATCH'}</span>`;
+          ? `<span class="match-badge flex items-center gap-1 font-extrabold" style="background-color: var(--bronze); color: #000;"><svg class="w-3 h-3" stroke="currentColor" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin: 0; width: 12px; height: 12px;"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>BRONZE MATCH</span>`
+          : `<span class="match-badge scheduled" style="border: 1px solid var(--bronze); color: var(--bronze);">BRONZE MATCH</span>`;
       } else {
         highlightClass = isCompleted ? 'border-completed' : 'border-scheduled';
         statusBadge = isCompleted 
-          ? `<span class="match-badge completed">${isVi ? 'KẾT THÚC' : 'FINAL'}</span>`
-          : `<span class="match-badge scheduled">${isVi ? 'LỊCH HẸN' : 'SCHEDULED'}</span>`;
+          ? `<span class="match-badge completed">FINAL</span>`
+          : `<span class="match-badge scheduled">SCHEDULED</span>`;
       }
 
       const isMD = match.category === "Men's Doubles";
@@ -945,11 +989,11 @@ class BadmintonApp {
         actionFooter = `
           <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-800/80 gap-2">
             <button class="btn btn-xs btn-outline btn-spectate-match flex items-center gap-1" data-match-id="${match.id}">
-              🔍 <span>${isVi ? 'Xem Live' : 'Spectate'}</span>
+              🔍 <span>Spectate</span>
             </button>
             ${isRefAuthorized ? `
               <button class="btn btn-xs btn-outline btn-join-match flex items-center gap-1" style="border-color: var(--volt); color: var(--volt);" data-match-id="${match.id}">
-                Umpire <span>${isVi ? 'Vào Sân' : 'Join'}</span>
+                Umpire <span>Join</span>
               </button>
             ` : ''}
           </div>
@@ -958,7 +1002,7 @@ class BadmintonApp {
         actionFooter = this.admin.isAdmin ? `
           <div class="flex justify-end mt-3 pt-2.5 border-t border-slate-800/80">
             <button class="btn btn-xs btn-outline btn-edit-match flex items-center gap-1" data-match-id="${match.id}">
-              ✏️ <span>${isVi ? 'Sửa Điểm' : 'Edit Score'}</span>
+              ✏️ <span>Edit Score</span>
             </button>
           </div>
         ` : '';
@@ -966,17 +1010,17 @@ class BadmintonApp {
         actionFooter = `
           <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-800/80 gap-2">
             <div>
-              <span class="text-5xs text-slate-500 font-bold uppercase tracking-wider">${isVi ? 'CHỜ ĐẤU' : 'AWAITING'}</span>
+              <span class="text-5xs text-slate-500 font-bold uppercase tracking-wider">AWAITING</span>
             </div>
             <div class="flex gap-2">
               ${isRefAuthorized ? `
                 <button class="btn btn-xs btn-outline btn-join-match flex items-center gap-1" style="border-color: var(--volt); color: var(--volt);" data-match-id="${match.id}">
-                  🏸 <span>${isVi ? 'Khai Mạc' : 'Umpire'}</span>
+                  🏸 <span>Umpire</span>
                 </button>
               ` : ''}
               ${this.admin.isAdmin ? `
                 <button class="btn btn-xs btn-outline btn-edit-match flex items-center gap-1" data-match-id="${match.id}">
-                  ✏️ <span>${isVi ? 'Nhập Điểm' : 'Direct'}</span>
+                  ✏️ <span>Direct</span>
                 </button>
               ` : ''}
             </div>
@@ -1004,7 +1048,7 @@ class BadmintonApp {
                 <span class="text-sm font-bold ${(isCompleted && match.winner === match.team1) || (isLive && displayScore1 > displayScore2) ? winnerColorClass : 'text-slate-200'} truncate" title="${match.team1}">
                   ${match.team1}
                 </span>
-                <span class="text-4xs text-slate-500 font-normal mt-0.5 truncate" title="${team1Players || (isVi ? 'Đang xác định' : 'TBD')}">${team1Players || (isVi ? 'Đang xác định' : 'TBD')}</span>
+                <span class="text-4xs text-slate-500 font-normal mt-0.5 truncate" title="${team1Players || 'TBD'}">${team1Players || 'TBD'}</span>
               </div>
               <div class="flex items-center justify-end font-mono text-2xs font-extrabold" style="width: 100px; gap: 0.5rem; flex-shrink: 0;">
                 ${t1ScoresHtml}
@@ -1017,7 +1061,7 @@ class BadmintonApp {
                 <span class="text-sm font-bold ${(isCompleted && match.winner === match.team2) || (isLive && displayScore2 > displayScore1) ? winnerColorClass : 'text-slate-200'} truncate" title="${match.team2}">
                   ${match.team2}
                 </span>
-                <span class="text-4xs text-slate-500 font-normal mt-0.5 truncate" title="${team2Players || (isVi ? 'Đang xác định' : 'TBD')}">${team2Players || (isVi ? 'Đang xác định' : 'TBD')}</span>
+                <span class="text-4xs text-slate-500 font-normal mt-0.5 truncate" title="${team2Players || 'TBD'}">${team2Players || 'TBD'}</span>
               </div>
               <div class="flex items-center justify-end font-mono text-2xs font-extrabold" style="width: 100px; gap: 0.5rem; flex-shrink: 0;">
                 ${t2ScoresHtml}
@@ -1033,8 +1077,6 @@ class BadmintonApp {
   }
 
   renderBracket(container) {
-    const isVi = this.lang === 'vi';
-    
     // Retrieve the 4 knockout matches for MD and XD
     const getKnockoutData = (cat) => {
       const suffix = cat === "Men's Doubles" ? "MD" : "XD";
@@ -1063,7 +1105,7 @@ class BadmintonApp {
           ? '🥉 Seed 3' 
           : rank === 4 
           ? '🎫 Seed 4' 
-          : (isVi ? '❌ Loại' : '❌ Out');
+          : '❌ Out';
         const advanceColor = isTop4 ? 'text-emerald-400' : 'text-slate-500';
         
         return `
@@ -1091,7 +1133,7 @@ class BadmintonApp {
           
         const editIcon = this.admin.isAdmin
           ? (hasPlaceholders 
-              ? `<span title="${isVi ? 'Chưa thể nhập điểm' : 'Cannot edit score yet'}" style="opacity: 0.3; cursor: not-allowed; font-size: 0.65rem;">🔒</span>`
+              ? `<span title="Cannot edit score yet" style="opacity: 0.3; cursor: not-allowed; font-size: 0.65rem;">🔒</span>`
               : `<button class="btn-edit-node-score btn-edit-match" data-match-id="${match.id}">✏️</button>`)
           : '';
 
@@ -1128,7 +1170,7 @@ class BadmintonApp {
         }
 
         const footerHtml = isComp 
-          ? `<div class="node-footer text-4xs text-emerald-400 font-semibold mt-1.5 pt-1 border-t border-slate-800/40 text-center">✓ ${isVi ? 'Đã kết thúc' : 'Finished'}</div>` 
+          ? `<div class="node-footer text-4xs text-emerald-400 font-semibold mt-1.5 pt-1 border-t border-slate-800/40 text-center">✓ Finished</div>` 
           : `<div class="node-footer text-4xs text-slate-500 font-semibold mt-1.5 pt-1 border-t border-slate-800/40 text-center">🕒 ${match.time}</div>`;
           
         return `
@@ -1143,7 +1185,7 @@ class BadmintonApp {
               <div class="flex items-center justify-between text-3xs font-bold ${isComp && match.winner === match.team1 ? winnerColorClass : 'text-slate-300'}" data-team-name="${match.team1}">
                 <div class="flex flex-col min-w-0 pr-1.5">
                   <span class="truncate" title="${match.team1}">${match.team1}</span>
-                  <span class="text-5xs text-slate-500 font-normal mt-0.5 truncate" style="max-w-[85px];" title="${team1Players || (isVi ? 'Đang xác định' : 'TBD')}">${team1Players || (isVi ? 'Đang xác định' : 'TBD')}</span>
+                  <span class="text-5xs text-slate-500 font-normal mt-0.5 truncate" style="max-w-[85px];" title="${team1Players || 'TBD'}">${team1Players || 'TBD'}</span>
                 </div>
                 <div class="flex items-center justify-end font-mono text-4xs font-bold" style="width: 70px; gap: 0.35rem; flex-shrink: 0;">
                   ${t1ScoresHtml}
@@ -1154,7 +1196,7 @@ class BadmintonApp {
               <div class="flex items-center justify-between text-3xs font-bold ${isComp && match.winner === match.team2 ? winnerColorClass : 'text-slate-300'}" data-team-name="${match.team2}">
                 <div class="flex flex-col min-w-0 pr-1.5">
                   <span class="truncate" title="${match.team2}">${match.team2}</span>
-                  <span class="text-5xs text-slate-500 font-normal mt-0.5 truncate" style="max-w-[85px];" title="${team2Players || (isVi ? 'Đang xác định' : 'TBD')}">${team2Players || (isVi ? 'Đang xác định' : 'TBD')}</span>
+                  <span class="text-5xs text-slate-500 font-normal mt-0.5 truncate" style="max-w-[85px];" title="${team2Players || 'TBD'}">${team2Players || 'TBD'}</span>
                 </div>
                 <div class="flex items-center justify-end font-mono text-4xs font-bold" style="width: 70px; gap: 0.35rem; flex-shrink: 0;">
                   ${t2ScoresHtml}
@@ -1177,12 +1219,12 @@ class BadmintonApp {
           <div class="bracket-visualizer">
             <!-- Group Standings Column -->
             <div class="bracket-col flex flex-col justify-center" style="width: 190px;">
-              <div class="node-label mb-2 text-center" style="letter-spacing: 0.05em;">📊 ${isVi ? 'BẢNG XẾP HẠNG' : 'GROUP STANDINGS'}</div>
+              <div class="node-label mb-2 text-center" style="letter-spacing: 0.05em;">📊 GROUP STANDINGS</div>
               <div class="glass-panel p-2.5 rounded border border-slate-700/40 flex flex-col gap-1" style="background: rgba(15, 23, 42, 0.45);">
                 ${renderMiniBracketStandings(category)}
               </div>
               <div class="text-4xs text-muted text-center mt-2.5 font-semibold leading-relaxed">
-                💡 ${isVi ? 'Top 4 đội tiến vào<br>vòng đấu loại trực tiếp' : 'Top 4 teams advance to<br>playoff bracket stage'}
+                💡 Top 4 teams advance to<br>playoff bracket stage
               </div>
             </div>
 
@@ -1243,13 +1285,13 @@ class BadmintonApp {
 
             <!-- Bảng Vàng / Podium Column -->
             <div class="bracket-col flex flex-col justify-center" style="width: 190px; gap: 0.75rem;">
-              <div class="node-label mb-2 text-center text-gold font-bold" style="letter-spacing: 0.05em;">🏆 ${isVi ? 'BẢNG VÀNG' : 'FINAL RESULTS'}</div>
+              <div class="node-label mb-2 text-center text-gold font-bold" style="letter-spacing: 0.05em;">🏆 FINAL RESULTS</div>
               
               <!-- Gold Node -->
               <div class="bracket-node glass-panel border border-amber-500/35 rounded hover-glowing" style="background: rgba(245, 158, 11, 0.03); padding: 0.5rem 0.65rem;" data-team-name="${awards.goldTeam.name}">
                 <div class="flex items-center gap-1.5 font-extrabold text-3xs text-amber-400">
                   <span>🥇</span>
-                  <span>${isVi ? 'VÔ ĐỊCH' : 'CHAMPION'}</span>
+                  <span>CHAMPION</span>
                 </div>
                 <div class="font-extrabold text-xs text-slate-100 truncate mt-1" title="${awards.goldTeam.name}">${awards.goldTeam.name}</div>
                 <div class="text-4xs text-muted truncate mt-0.5" title="${awards.goldTeam.players}">${awards.goldTeam.players}</div>
@@ -1259,7 +1301,7 @@ class BadmintonApp {
               <div class="bracket-node glass-panel border border-slate-400/30 rounded hover-glowing" style="background: rgba(148, 163, 184, 0.02); padding: 0.5rem 0.65rem;" data-team-name="${awards.silverTeam.name}">
                 <div class="flex items-center gap-1.5 font-bold text-3xs text-slate-300">
                   <span>🥈</span>
-                  <span>${isVi ? 'Á QUÂN' : 'RUNNER-UP'}</span>
+                  <span>RUNNER-UP</span>
                 </div>
                 <div class="font-bold text-xs text-slate-200 truncate mt-1" title="${awards.silverTeam.name}">${awards.silverTeam.name}</div>
                 <div class="text-4xs text-muted truncate mt-0.5" title="${awards.silverTeam.players}">${awards.silverTeam.players}</div>
@@ -1269,7 +1311,7 @@ class BadmintonApp {
               <div class="bracket-node glass-panel border border-amber-700/30 rounded hover-glowing" style="background: rgba(217, 119, 6, 0.01); padding: 0.5rem 0.65rem;" data-team-name="${awards.bronzeTeam.name}">
                 <div class="flex items-center gap-1.5 font-bold text-3xs text-amber-600">
                   <span>🥉</span>
-                  <span>${isVi ? 'HẠNG 3' : '3RD PLACE'}</span>
+                  <span>3RD PLACE</span>
                 </div>
                 <div class="font-semibold text-xs text-slate-200 truncate mt-1" title="${awards.bronzeTeam.name}">${awards.bronzeTeam.name}</div>
                 <div class="text-4xs text-muted truncate mt-0.5" title="${awards.bronzeTeam.players}">${awards.bronzeTeam.players}</div>
@@ -1279,7 +1321,7 @@ class BadmintonApp {
               <div class="bracket-node glass-panel border border-slate-600/30 rounded hover-glowing" style="background: rgba(148, 163, 184, 0.01); padding: 0.5rem 0.65rem;" data-team-name="${awards.fourthTeam.name}">
                 <div class="flex items-center gap-1.5 font-bold text-3xs text-slate-400">
                   <span>🏅</span>
-                  <span>${isVi ? 'HẠNG 4' : '4TH PLACE'}</span>
+                  <span>4TH PLACE</span>
                 </div>
                 <div class="font-semibold text-xs text-slate-200 truncate mt-1" title="${awards.fourthTeam.name}">${awards.fourthTeam.name}</div>
                 <div class="text-4xs text-muted truncate mt-0.5" title="${awards.fourthTeam.players}">${awards.fourthTeam.players}</div>
@@ -1292,8 +1334,8 @@ class BadmintonApp {
 
     container.innerHTML = `
       <div class="mb-6">
-        <h2 class="view-title text-glow-volt m-0">🌳 Sơ Đồ Cây Vòng Đoạt Cúp</h2>
-        <p class="view-subtitle">${isVi ? 'Tự động tính phân cặp & lộ trình thăng cấp trực quan' : 'Automatic calculated tournament brackets and playoff trees'}</p>
+        <h2 class="view-title text-glow-volt m-0">🌳 Playoff Tournament Tree</h2>
+        <p class="view-subtitle">Automatic calculated tournament brackets and playoff trees</p>
       </div>
 
       ${renderBracketTree(md, "Men's Doubles", true, "Men's Doubles")}
@@ -1350,11 +1392,10 @@ class BadmintonApp {
     const fMatch = this.state.matches.find(m => m.id === `F-${suffix}`);
     const bMatch = this.state.matches.find(m => m.id === `B-${suffix}`);
 
-    const isVi = this.lang === 'vi';
-    let goldTeam = { name: isVi ? 'Chưa xác định' : 'TBD', players: isVi ? 'Đội vô địch' : 'Championship Winner', confirmed: false };
-    let silverTeam = { name: isVi ? 'Chưa xác định' : 'TBD', players: isVi ? 'Đội hạng nhì' : 'Championship Runner-up', confirmed: false };
-    let bronzeTeam = { name: isVi ? 'Chưa xác định' : 'TBD', players: isVi ? 'Đội hạng ba' : 'Bronze Winner', confirmed: false };
-    let fourthTeam = { name: isVi ? 'Chưa xác định' : 'TBD', players: isVi ? 'Đội hạng tư' : 'Bronze Runner-up', confirmed: false };
+    let goldTeam = { name: 'TBD', players: 'Championship Winner', confirmed: false };
+    let silverTeam = { name: 'TBD', players: 'Championship Runner-up', confirmed: false };
+    let bronzeTeam = { name: 'TBD', players: 'Bronze Winner', confirmed: false };
+    let fourthTeam = { name: 'TBD', players: 'Bronze Runner-up', confirmed: false };
 
     const getPlayersStr = (teamName) => {
       if (!teamName) return '';
@@ -1372,13 +1413,13 @@ class BadmintonApp {
         const isPlaceholder = fMatch.team1.includes('Winner') || fMatch.team2.includes('Winner');
         if (!isPlaceholder) {
           goldTeam = { 
-            name: isVi ? 'Chung Kết Đang Đấu' : 'Grand Finalists',
+            name: 'Grand Finalists',
             players: `${fMatch.team1} vs ${fMatch.team2}`, 
             confirmed: false 
           };
           silverTeam = { 
-            name: isVi ? 'Đang Tranh Chức Á Quân' : 'Chasing Runner-up',
-            players: isVi ? 'Đội thua trận Chung kết' : 'Runner-up of Grand Final',
+            name: 'Chasing Runner-up',
+            players: 'Runner-up of Grand Final',
             confirmed: false 
           };
         }
@@ -1395,7 +1436,7 @@ class BadmintonApp {
         const isPlaceholder = bMatch.team1.includes('Loser') || bMatch.team2.includes('Loser');
         if (!isPlaceholder) {
           bronzeTeam = {
-            name: isVi ? 'Tranh Hạng 3 Đang Đấu' : 'Bronze Contenders',
+            name: 'Bronze Contenders',
             players: `${bMatch.team1} vs ${bMatch.team2}`,
             confirmed: false
           };
@@ -1407,21 +1448,45 @@ class BadmintonApp {
   }
 
   renderResults(container) {
-    const isVi = this.lang === 'vi';
-    
     const mdAwards = this.getAwardResults("Men's Doubles");
     const xdAwards = this.getAwardResults("Mixed's Doubles");
 
     const renderPodium = (awards, categoryTitle, isMD) => {
       const isConfirmed = awards.goldTeam.confirmed || awards.silverTeam.confirmed || awards.bronzeTeam.confirmed;
-      const themeColorClass = isMD ? 'text-volt border-glow-volt' : 'text-cyan border-glow-cyan';
-      const indicatorBarColor = isMD ? 'bg-volt' : 'bg-cyan';
       
-      const getPodiumAvatarHtml = (teamName, sizePx = 48) => {
+      const getPodiumAvatarHtml = (teamName, sizePx = 48, placement = '') => {
+        let medalHtml = '';
+        if (placement === 'gold') {
+          medalHtml = `
+            <div class="podium-medal-badge gold" title="Gold Medal - Champion" style="font-size: 16px; line-height: 1;">
+              🥇
+            </div>
+          `;
+        } else if (placement === 'silver') {
+          medalHtml = `
+            <div class="podium-medal-badge silver" title="Silver Medal - Runner-up" style="font-size: 16px; line-height: 1;">
+              🥈
+            </div>
+          `;
+        } else if (placement === 'bronze') {
+          medalHtml = `
+            <div class="podium-medal-badge bronze" title="Bronze Medal - 3rd Place" style="font-size: 16px; line-height: 1;">
+              🥉
+            </div>
+          `;
+        } else if (placement === 'fourth') {
+          medalHtml = `
+            <div class="podium-medal-badge fourth" title="Honorable Mention - 4th Place" style="font-size: 16px; line-height: 1;">
+              🎖️
+            </div>
+          `;
+        }
+
         if (!teamName || teamName.includes('TBD') || teamName.includes('Place') || teamName.includes('Winner') || teamName.includes('Loser') || teamName.includes('Chasing') || teamName.includes('Tranh') || teamName.includes('Chung')) {
           return `
-            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/80 rounded-full border border-slate-700 mx-auto mb-2" style="width: ${sizePx}px; height: ${sizePx}px; font-size: ${sizePx * 0.25}rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/85 mx-auto" style="width: ${sizePx}px; height: ${sizePx}px; font-size: ${sizePx * 0.25}rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 50% !important; position: relative;">
               👥
+              ${medalHtml}
             </div>
           `;
         }
@@ -1429,89 +1494,147 @@ class BadmintonApp {
         const team = this.state.teams.find(t => t.name === teamName);
         if (!team) {
           return `
-            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/80 rounded-full border border-slate-700 mx-auto mb-2" style="width: ${sizePx}px; height: ${sizePx}px; font-size: ${sizePx * 0.25}rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+            <div class="podium-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800/85 mx-auto" style="width: ${sizePx}px; height: ${sizePx}px; font-size: ${sizePx * 0.25}rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 50% !important; position: relative;">
               👥
+              ${medalHtml}
             </div>
           `;
         }
 
         return `
-          <div class="podium-avatar-wrapper mx-auto mb-2" style="width: ${sizePx}px; height: ${sizePx}px; position: relative; flex-shrink: 0;">
+          <div class="podium-avatar-wrapper mx-auto" style="width: ${sizePx}px; height: ${sizePx}px; position: relative; flex-shrink: 0; border-radius: 50% !important;">
             <img src="/teams/${team.id}.jpg" 
                  onerror="this.onerror=null; this.src='/teams/${team.id}.png'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='flex';};" 
-                 class="podium-avatar rounded-full object-cover border-2 border-slate-950" 
-                 style="width: 100%; height: 100%; display: block; box-shadow: 0 4px 10px rgba(0,0,0,0.4);" />
-            <div class="team-fallback-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800 rounded-full border-2 border-slate-950" 
-                 style="display:none; width: 100%; height: 100%; font-size: ${sizePx * 0.25}rem;">👥</div>
+                 class="podium-avatar object-cover" 
+                 style="width: 100%; height: 100%; display: block; border-radius: 50% !important; box-shadow: 0 4px 10px rgba(0,0,0,0.4);" />
+            <div class="team-fallback-avatar flex items-center justify-center font-bold text-slate-400 bg-slate-800" 
+                 style="display:none; width: 100%; height: 100%; border-radius: 50% !important; font-size: ${sizePx * 0.25}rem;">👥</div>
+            ${medalHtml}
           </div>
         `;
       };
 
+      const silverTeamObj = this.state.teams.find(t => t.name === awards.silverTeam.name);
+      const silverId = silverTeamObj ? silverTeamObj.id : '';
+      const silverClass = silverId ? 'clickable-podium' : '';
+
+      const goldTeamObj = this.state.teams.find(t => t.name === awards.goldTeam.name);
+      const goldId = goldTeamObj ? goldTeamObj.id : '';
+      const goldClass = goldId ? 'clickable-podium' : '';
+
+      const bronzeTeamObj = this.state.teams.find(t => t.name === awards.bronzeTeam.name);
+      const bronzeId = bronzeTeamObj ? bronzeTeamObj.id : '';
+      const bronzeClass = bronzeId ? 'clickable-podium' : '';
+
+      const fourthTeamObj = this.state.teams.find(t => t.name === awards.fourthTeam.name);
+      const fourthId = fourthTeamObj ? fourthTeamObj.id : '';
+      const fourthClass = fourthId ? 'clickable-podium' : '';
+
       return `
-        <div class="glass-card mb-8 text-center relative overflow-hidden">
+        <div class="glass-card mb-8 text-center relative overflow-hidden" style="padding: 1.5rem 1rem;">
           <div class="absolute top-0 left-0 w-full h-[3px] ${isMD ? 'bg-gradient-to-r from-lime-500 via-lime-400 to-lime-600' : 'bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-600'}"></div>
           <h3 class="font-bold mb-2 flex items-center justify-center gap-2 ${isMD ? 'text-volt' : 'text-cyan'} text-glow-volt">
             <span>🏆</span>
             <span>${categoryTitle}</span>
           </h3>
-          <p class="text-xs text-muted mb-6">
+          <p class="text-xs text-muted mb-4">
             ${isConfirmed 
-              ? (isVi ? '⚡ Official championship results recorded' : '⚡ Official championship matches completed')
-              : (isVi ? '⏳ Waiting for championship finals' : '⏳ Waiting for championship finals to complete')}
+              ? '⚡ Official championship matches completed'
+              : '⏳ Waiting for championship finals to complete'}
           </p>
-
-          <div class="podium-container">
-            <!-- 2nd Place Step -->
-            <div class="podium-step second-place">
-              <span class="podium-medal">🥈</span>
-              ${getPodiumAvatarHtml(awards.silverTeam.name, 44)}
-              <div class="podium-team truncate max-w-full" title="${awards.silverTeam.name}">${awards.silverTeam.name}</div>
-              <div class="podium-players truncate max-w-full" title="${awards.silverTeam.players}">${awards.silverTeam.players}</div>
-              <span class="podium-label">${isVi ? 'Runner-up' : 'Runner-up'}</span>
+ 
+          <div class="podium-stage-container">
+            <!-- Silver (#2) -->
+            <div class="podium-column silver ${silverClass}" data-team-id="${silverId}" data-category="${categoryTitle}">
+              <div class="h-6 md:h-8 mb-1.5 flex-shrink-0"></div>
+              <div class="podium-avatar-halo">
+                ${getPodiumAvatarHtml(awards.silverTeam.name, 56, 'silver')}
+              </div>
+              <div class="text-center w-full px-1 mb-2.5 flex-1 flex flex-col justify-end">
+                <div class="font-extrabold text-[11px] md:text-sm text-slate-100 break-words leading-snug" title="${awards.silverTeam.name}">${awards.silverTeam.name}</div>
+                <div class="text-[9px] md:text-xs text-slate-400 font-medium break-words mt-0.5 leading-snug" title="${awards.silverTeam.players}">${awards.silverTeam.players}</div>
+              </div>
+              <div class="podium-pedestal-block">
+                <span class="podium-number">2</span>
+                <span class="podium-badge">Runner-up</span>
+              </div>
             </div>
 
-            <!-- 1st Place Step -->
-            <div class="podium-step first-place">
-              <span class="podium-medal">🥇</span>
-              ${getPodiumAvatarHtml(awards.goldTeam.name, 56)}
-              <div class="podium-team truncate max-w-full" title="${awards.goldTeam.name}">${awards.goldTeam.name}</div>
-              <div class="podium-players truncate max-w-full" title="${awards.goldTeam.players}">${awards.goldTeam.players}</div>
-              <span class="podium-label">${isVi ? 'Champion' : 'Champion'}</span>
+            <!-- Gold (#1) -->
+            <div class="podium-column gold ${goldClass}" data-team-id="${goldId}" data-category="${categoryTitle}">
+              <div class="crown-icon text-2xl md:text-3xl animate-bounce-slow mb-1 flex-shrink-0" style="filter: drop-shadow(0 0 8px rgba(245,158,11,0.6));">👑</div>
+              <div class="podium-avatar-halo">
+                ${getPodiumAvatarHtml(awards.goldTeam.name, 68, 'gold')}
+              </div>
+              <div class="text-center w-full px-1 mb-2.5 flex-1 flex flex-col justify-end">
+                <div class="font-black text-xs md:text-base text-slate-100 break-words leading-snug" title="${awards.goldTeam.name}">${awards.goldTeam.name}</div>
+                <div class="text-[9px] md:text-xs text-slate-400 font-medium break-words mt-0.5 leading-snug" title="${awards.goldTeam.players}">${awards.goldTeam.players}</div>
+              </div>
+              <div class="podium-pedestal-block">
+                <span class="podium-number">1</span>
+                <span class="podium-badge">Champion</span>
+              </div>
             </div>
 
-            <!-- 3rd Place Step -->
-            <div class="podium-step third-place">
-              <span class="podium-medal">🥉</span>
-              ${getPodiumAvatarHtml(awards.bronzeTeam.name, 44)}
-              <div class="podium-team truncate max-w-full" title="${awards.bronzeTeam.name}">${awards.bronzeTeam.name}</div>
-              <div class="podium-players truncate max-w-full" title="${awards.bronzeTeam.players}">${awards.bronzeTeam.players}</div>
-              <span class="podium-label">${isVi ? '3rd Place' : '3rd Place'}</span>
+            <!-- Bronze (#3) -->
+            <div class="podium-column bronze ${bronzeClass}" data-team-id="${bronzeId}" data-category="${categoryTitle}">
+              <div class="h-6 md:h-8 mb-1.5 flex-shrink-0"></div>
+              <div class="podium-avatar-halo">
+                ${getPodiumAvatarHtml(awards.bronzeTeam.name, 56, 'bronze')}
+              </div>
+              <div class="text-center w-full px-1 mb-2.5 flex-1 flex flex-col justify-end">
+                <div class="font-extrabold text-[11px] md:text-sm text-slate-100 break-words leading-snug" title="${awards.bronzeTeam.name}">${awards.bronzeTeam.name}</div>
+                <div class="text-[9px] md:text-xs text-slate-400 font-medium break-words mt-0.5 leading-snug" title="${awards.bronzeTeam.players}">${awards.bronzeTeam.players}</div>
+              </div>
+              <div class="podium-pedestal-block">
+                <span class="podium-number">3</span>
+                <span class="podium-badge">3rd Place</span>
+              </div>
             </div>
           </div>
-
-          <!-- Honorable 4th Place Card -->
-          <div class="max-w-[320px] mx-auto mt-8 glass-panel border border-slate-700/30 p-3 rounded-lg flex items-center justify-center gap-3.5 hover-glowing">
-            <span class="text-lg">🏅</span>
-            ${getPodiumAvatarHtml(awards.fourthTeam.name, 38)}
-            <div class="text-left truncate">
-              <div class="text-4xs text-muted font-bold uppercase tracking-wider">${isVi ? 'Honorable 4th Place' : 'Honorable 4th Place'}</div>
-              <div class="text-2xs font-extrabold text-slate-300 truncate" title="${awards.fourthTeam.name}">${awards.fourthTeam.name}</div>
-              <div class="text-4xs text-muted truncate" title="${awards.fourthTeam.players}">${awards.fourthTeam.players}</div>
+ 
+          <!-- Fourth Place premium card -->
+          <div class="podium-fourth-card ${fourthClass}" data-team-id="${fourthId}" data-category="${categoryTitle}">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+              <div class="podium-fourth-rank">
+                4
+              </div>
+              ${getPodiumAvatarHtml(awards.fourthTeam.name, 36, 'fourth')}
+              <div class="min-w-0 flex-1 text-left">
+                <div class="font-extrabold text-xs text-slate-200 truncate" title="${awards.fourthTeam.name}">${awards.fourthTeam.name}</div>
+                <div class="text-[10px] text-slate-500 font-medium truncate mt-0.5" title="${awards.fourthTeam.players}">${awards.fourthTeam.players}</div>
+              </div>
+            </div>
+            <div class="flex-shrink-0">
+              <span class="podium-fourth-badge">🎖️ Honorable Mention</span>
             </div>
           </div>
         </div>
       `;
     };
-
+ 
     container.innerHTML = `
       <div class="mb-6">
-        <h2 class="view-title text-glow-volt m-0">🏆 Bảng Vàng Danh Vọng</h2>
-        <p class="view-subtitle">${isVi ? 'Vinh danh nhà vô địch và các thứ hạng danh giá của mùa giải' : 'Honoring the champions and premium standings of the season'}</p>
+        <h2 class="view-title text-glow-volt m-0">🏆 Championship Wall of Fame</h2>
+        <p class="view-subtitle">Honoring the champions and premium standings of the season</p>
       </div>
-
+ 
       ${renderPodium(mdAwards, "Men's Doubles", true)}
       ${renderPodium(xdAwards, "Mixed's Doubles", false)}
     `;
+
+    // Bind click handlers to clickable podium items
+    const podiumClickables = container.querySelectorAll('.clickable-podium');
+    podiumClickables.forEach(elem => {
+      elem.addEventListener('click', () => {
+        const teamId = elem.getAttribute('data-team-id');
+        const category = elem.getAttribute('data-category');
+        if (teamId && category) {
+          this.showTeamDetailsModal(teamId, category);
+        }
+      });
+    });
+
 
     setTimeout(() => {
       if (this.activeTab === 'results' && this.confetti) {
@@ -1521,8 +1644,7 @@ class BadmintonApp {
   }
 
   renderRules(container) {
-    const isVi = this.lang === 'vi';
-    const reg = isVi ? REGULATIONS_DATA.vi : REGULATIONS_DATA.en;
+    const reg = REGULATIONS_DATA.en;
 
     const sectionsHtml = reg.sections.map(sec => {
       // Highlight certain markdown patterns in rules
@@ -1543,8 +1665,8 @@ class BadmintonApp {
 
     container.innerHTML = `
       <div class="mb-6">
-        <h2 class="view-title text-glow-volt m-0">📘 Quy Định & Luật Thi Đấu</h2>
-        <p class="view-subtitle">${isVi ? 'Tra cứu điều lệ chính thức & giả lập sân giao cầu trực tuyến' : 'Official tournament handbook and dynamic doubles service simulator'}</p>
+        <h2 class="view-title text-glow-volt m-0">📘 Rules & Regulations</h2>
+        <p class="view-subtitle">Official tournament handbook and dynamic doubles service simulator</p>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1569,72 +1691,17 @@ class BadmintonApp {
   }
 
   renderTeams(container) {
-    const isVi = this.lang === 'vi';
-
     // Teams rendering grouped by category
     const renderTeamGroup = (teams, category) => {
       const isMD = category === "Men's Doubles";
       const themeColor = isMD ? 'text-volt' : 'text-cyan';
-      const standings = this.state.calculateStandings(category);
 
       const teamCards = teams.map(team => {
-        // Calculate dynamic wins/games played from all completed matches
-        const completedMatches = this.state.matches.filter(m => 
-          m.category === category && 
-          m.status === 'Completed' && 
-          (m.team1 === team.name || m.team2 === team.name)
-        );
-
-        let wins = 0;
-        let losses = 0;
-        let setsWon = 0;
-        let setsLost = 0;
-        let pointsWon = 0;
-        let pointsLost = 0;
-
-        completedMatches.forEach(m => {
-          const isTeam1 = (m.team1 === team.name);
-          if (m.winner === team.name) {
-            wins++;
-          } else {
-            losses++;
-          }
-
-          if (isTeam1) {
-            setsWon += Number(m.score1) || 0;
-            setsLost += Number(m.score2) || 0;
-          } else {
-            setsWon += Number(m.score2) || 0;
-            setsLost += Number(m.score1) || 0;
-          }
-
-          if (m.sets && Array.isArray(m.sets)) {
-            m.sets.forEach(set => {
-              const p1 = Number(set.t1) || 0;
-              const p2 = Number(set.t2) || 0;
-              if (isTeam1) {
-                pointsWon += p1;
-                pointsLost += p2;
-              } else {
-                pointsWon += p2;
-                pointsLost += p1;
-              }
-            });
-          }
-        });
-
-        const played = completedMatches.length;
-        const winPercent = played > 0 ? Math.round((wins / played) * 100) : 0;
-        const netSets = setsWon - setsLost;
-        const netPoints = pointsWon - pointsLost;
-        const pts = wins; // 1 point per match win
-
-        // Calculate Rank from Standings
-        const rankIndex = standings.findIndex(t => t.name === team.name);
-        const rank = rankIndex !== -1 ? rankIndex + 1 : '-';
+        const stats = this.getTeamStats(team.name, category);
+        const rank = this.getTeamRank(team.name, category);
 
         // Build match form guide W-L pills
-        const formPills = completedMatches.map(m => {
+        const formPills = stats.completedMatches.map(m => {
           const isWin = (m.winner === team.name);
           const badgeClass = isWin 
             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
@@ -1646,7 +1713,7 @@ class BadmintonApp {
 
         const formPillsHtml = formPills.length > 0 
           ? formPills 
-          : `<span class="text-slate-500 text-5xs italic font-sans">${isVi ? 'Chưa đấu' : 'No matches'}</span>`;
+          : `<span class="text-slate-500 text-5xs italic font-sans">No matches</span>`;
 
         return `
           <div class="team-profile-card ${isMD ? 'team-card-md' : 'team-card-xd'} glass-panel border border-slate-700/50 rounded-lg hover-glowing flex flex-col justify-between overflow-hidden relative"
@@ -1671,11 +1738,11 @@ class BadmintonApp {
             <div class="team-card-body">
               <div>
 
-                <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-                  <div class="flex items-center gap-1.5 truncate max-w-[70%]">
-                    <span class="font-extrabold text-sm text-slate-100 truncate pr-1" title="${team.name}">${team.name}</span>
+                <div class="flex justify-between items-start gap-2 mb-3 border-b border-slate-800 pb-2">
+                  <div class="flex flex-wrap break-words min-w-0 flex-1">
+                    <span class="font-extrabold text-sm text-slate-100 break-words pr-1" title="${team.name}">${team.name}</span>
                   </div>
-                  <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <div class="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
                     <span class="badge bg-slate-800/80 text-slate-300 font-extrabold text-5xs border border-slate-700/50">#${rank}</span>
                     <span class="badge ${isMD ? 'bg-volt' : 'bg-cyan'} text-slate-950 font-bold text-4xs">TEAM</span>
                   </div>
@@ -1694,7 +1761,7 @@ class BadmintonApp {
                   
                   <!-- Form guide -->
                   <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-800/40">
-                    <span class="text-5xs font-bold uppercase tracking-wider text-slate-500">${isVi ? 'PHONG ĐỘ:' : 'FORM:'}</span>
+                    <span class="text-5xs font-bold uppercase tracking-wider text-slate-500">FORM:</span>
                     <div class="flex items-center gap-1">
                       ${formPillsHtml}
                     </div>
@@ -1707,44 +1774,44 @@ class BadmintonApp {
                 <!-- Summary row -->
                 <div class="grid grid-cols-4 gap-1 text-center font-semibold text-slate-400 mb-3 border-b border-slate-900 pb-2">
                   <div>
-                    <div class="text-2xs font-extrabold text-slate-200">${played}</div>
-                    <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Đã đấu' : 'Pld'}</div>
+                    <div class="text-2xs font-extrabold text-slate-200">${stats.played}</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">Pld</div>
                   </div>
                   <div>
-                    <div class="text-2xs font-extrabold ${isMD ? 'text-volt' : 'text-cyan'}">${wins}</div>
-                    <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Thắng' : 'Won'}</div>
+                    <div class="text-2xs font-extrabold ${isMD ? 'text-volt' : 'text-cyan'}">${stats.wins}</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">Won</div>
                   </div>
                   <div>
-                    <div class="text-2xs font-extrabold ${losses > 0 ? 'text-rose-400' : 'text-slate-400'}">${losses}</div>
-                    <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Thua' : 'Lost'}</div>
+                    <div class="text-2xs font-extrabold ${stats.losses > 0 ? 'text-rose-400' : 'text-slate-400'}">${stats.losses}</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">Lost</div>
                   </div>
                   <div>
-                    <div class="text-2xs font-extrabold text-slate-200">${winPercent}%</div>
-                    <div class="text-5xs uppercase tracking-wider text-slate-500">${isVi ? 'Tỉ Lệ' : 'Win%'}</div>
+                    <div class="text-2xs font-extrabold text-slate-200">${stats.winPercent}%</div>
+                    <div class="text-5xs uppercase tracking-wider text-slate-500">Win%</div>
                   </div>
                 </div>
 
                 <!-- Telemetry detail list -->
                 <div class="flex flex-col gap-1.5 font-mono">
                   <div class="flex items-center justify-between text-slate-400">
-                    <span>${isVi ? 'Điểm tích lũy:' : 'Standing Pts:'}</span>
-                    <span class="font-extrabold text-slate-200">${pts}</span>
+                    <span>Standing Pts:</span>
+                    <span class="font-extrabold text-slate-200">${stats.pts}</span>
                   </div>
                   <div class="flex items-center justify-between text-slate-400">
-                    <span>${isVi ? 'Set Thắng/Bại:' : 'Sets W/L:'}</span>
+                    <span>Sets W/L:</span>
                     <div class="flex items-center gap-1.5">
-                      <span class="text-slate-200">${setsWon}-${setsLost}</span>
-                      <span class="text-5xs font-bold px-1 py-0.5 rounded ${netSets > 0 ? 'bg-emerald-500/10 text-emerald-400' : netSets < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'}">
-                        ${netSets > 0 ? '+' : ''}${netSets}
+                      <span class="text-slate-200">${stats.setsWon}-${stats.setsLost}</span>
+                      <span class="text-5xs font-bold px-1 py-0.5 rounded ${stats.netSets > 0 ? 'bg-emerald-500/10 text-emerald-400' : stats.netSets < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'}">
+                        ${stats.netSets > 0 ? '+' : ''}${stats.netSets}
                       </span>
                     </div>
                   </div>
                   <div class="flex items-center justify-between text-slate-400">
-                    <span>${isVi ? 'Điểm Thắng/Bại:' : 'Points W/L:'}</span>
+                    <span>Points W/L:</span>
                     <div class="flex items-center gap-1.5">
-                      <span class="text-slate-200">${pointsWon}-${pointsLost}</span>
-                      <span class="text-5xs font-bold px-1 py-0.5 rounded ${netPoints > 0 ? 'bg-emerald-500/10 text-emerald-400' : netPoints < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'}">
-                        ${netPoints > 0 ? '+' : ''}${netPoints}
+                      <span class="text-slate-200">${stats.pointsWon}-${stats.pointsLost}</span>
+                      <span class="text-5xs font-bold px-1 py-0.5 rounded ${stats.netPoints > 0 ? 'bg-emerald-500/10 text-emerald-400' : stats.netPoints < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'}">
+                        ${stats.netPoints > 0 ? '+' : ''}${stats.netPoints}
                       </span>
                     </div>
                   </div>
@@ -1768,8 +1835,26 @@ class BadmintonApp {
       `;
     };
 
-    const mdTeams = this.state.teams.filter(t => t.category === "Men's Doubles");
-    const xdTeams = this.state.teams.filter(t => t.category === "Mixed's Doubles");
+    const mdTeams = this.state.teams
+      .filter(t => t.category === "Men's Doubles")
+      .sort((a, b) => {
+        const rA = this.getTeamRank(a.name, "Men's Doubles");
+        const rB = this.getTeamRank(b.name, "Men's Doubles");
+        const valA = typeof rA === 'number' ? rA : 99;
+        const valB = typeof rB === 'number' ? rB : 99;
+        return valA - valB;
+      });
+
+    const xdTeams = this.state.teams
+      .filter(t => t.category === "Mixed's Doubles")
+      .sort((a, b) => {
+        const rA = this.getTeamRank(a.name, "Mixed's Doubles");
+        const rB = this.getTeamRank(b.name, "Mixed's Doubles");
+        const valA = typeof rA === 'number' ? rA : 99;
+        const valB = typeof rB === 'number' ? rB : 99;
+        return valA - valB;
+      });
+
     container.innerHTML = `
       <div class="mb-6">
         <h2 class="view-title text-glow-volt m-0">👥 Registered Teams & Members</h2>
@@ -1797,194 +1882,181 @@ class BadmintonApp {
     if (!team) return;
 
     const isMD = category === "Men's Doubles";
-    const standings = this.state.calculateStandings(category);
     
-    // Calculate dynamic wins/games played from all completed matches
-    const completedMatches = this.state.matches.filter(m => 
-      m.category === category && 
-      m.status === 'Completed' && 
-      (m.team1 === team.name || m.team2 === team.name)
-    );
+    const stats = this.getTeamStats(team.name, category);
+    const rank = this.getTeamRank(team.name, category);
 
-    let wins = 0;
-    let losses = 0;
-    let setsWon = 0;
-    let setsLost = 0;
-    let pointsWon = 0;
-    let pointsLost = 0;
+    const played = stats.played;
+    const wins = stats.wins;
+    const losses = stats.losses;
+    const pts = stats.pts;
+    const setsWon = stats.setsWon;
+    const setsLost = stats.setsLost;
+    const netSets = stats.netSets;
+    const pointsWon = stats.pointsWon;
+    const pointsLost = stats.pointsLost;
+    const netPoints = stats.netPoints;
+    const winPercent = stats.winPercent;
 
-    completedMatches.forEach(m => {
-      const isTeam1 = (m.team1 === team.name);
-      if (m.winner === team.name) {
-        wins++;
-      } else {
-        losses++;
-      }
-
-      if (isTeam1) {
-        setsWon += Number(m.score1) || 0;
-        setsLost += Number(m.score2) || 0;
-      } else {
-        setsWon += Number(m.score2) || 0;
-        setsLost += Number(m.score1) || 0;
-      }
-
-      if (m.sets && Array.isArray(m.sets)) {
-        m.sets.forEach(set => {
-          const p1 = Number(set.t1) || 0;
-          const p2 = Number(set.t2) || 0;
-          if (isTeam1) {
-            pointsWon += p1;
-            pointsLost += p2;
-          } else {
-            pointsWon += p2;
-            pointsLost += p1;
-          }
-        });
-      }
-    });
-
-    const played = completedMatches.length;
-    const winPercent = played > 0 ? Math.round((wins / played) * 100) : 0;
-    const netSets = setsWon - setsLost;
-    const netPoints = pointsWon - pointsLost;
-    const pts = wins; // 1 point per match win
-
-    const rankIndex = standings.findIndex(t => t.name === team.name);
-    const rank = rankIndex !== -1 ? rankIndex + 1 : '-';
-
-    const formPills = completedMatches.map(m => {
+    const formPills = stats.completedMatches.map(m => {
       const isWin = (m.winner === team.name);
-      const badgeClass = isWin 
-        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+      const pillClass = isWin ? 'win' : 'loss';
       const label = isWin ? 'W' : 'L';
       const tooltip = `${m.stage}: ${m.team1} vs ${m.team2} (${m.score1}-${m.score2})`;
-      return `<span class="flex items-center justify-center rounded-full font-bold font-mono text-5xs cursor-help ${badgeClass}" style="width: 16px; height: 16px; font-size: 0.5rem;" title="${tooltip}">${label}</span>`;
+      return `<span class="team-modal-form-pill ${pillClass}" title="${tooltip}">${label}</span>`;
     }).join('');
 
     const formPillsHtml = formPills.length > 0 ? formPills : `<span class="text-slate-500 text-5xs italic">No matches played</span>`;
 
     // Create Modal Elements dynamically
     const backdrop = document.createElement('div');
-    backdrop.className = 'modal-backdrop';
+    backdrop.className = 'team-modal-backdrop';
     backdrop.id = 'team-profile-modal-backdrop';
 
+    const rankBadgeHtml = rank === 1 
+      ? '<div class="team-modal-rank-badge rank-1">🥇 Rank #1</div>'
+      : rank === 2
+      ? '<div class="team-modal-rank-badge rank-2">🥈 Rank #2</div>'
+      : rank === 3
+      ? '<div class="team-modal-rank-badge rank-3">🥉 Rank #3</div>'
+      : `<div class="team-modal-rank-badge rank-other">Rank #${rank}</div>`;
+
+    const themeColor = isMD ? 'volt' : 'cyan';
+    const themeHex = isMD ? '#a3e635' : '#22d3ee';
+
     backdrop.innerHTML = `
-      <div class="modal-card glass-card relative overflow-hidden" style="max-width: 480px; padding: 0; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <div class="team-modal-card">
         <!-- Close Button -->
-        <button class="absolute top-4 right-4 z-50 flex items-center justify-center rounded-full bg-slate-950/80 border border-slate-700 text-slate-300 hover:text-white" id="modal-team-close-btn" style="width: 30px; height: 30px; font-size: 1.1rem; cursor: pointer; transition: all 0.2s; border: none;">
+        <button class="team-modal-close-btn" id="modal-team-close-btn">
           &times;
         </button>
 
-        <!-- Cover Photo (Inspire by FB cover) -->
-        <div class="relative w-full overflow-hidden bg-slate-900 border-b border-slate-800" style="height: 180px;">
+        <!-- Cover Photo with Integrated Header -->
+        <div class="team-modal-cover">
+          ${rankBadgeHtml}
           <img src="/teams/${team.id}.jpg" 
-               onerror="this.onerror=null; this.src='/teams/${team.id}.png'; this.onerror=function(){ this.style.display='none'; this.parentNode.querySelector('.cover-placeholder').style.display='flex'; }"
-               style="width: 100%; height: 100%; object-fit: cover; filter: brightness(0.65) contrast(1.1);" />
-          <div class="cover-placeholder flex items-center justify-center font-bold text-slate-600 bg-slate-900" style="display: none; width: 100%; height: 100%; font-size: 4rem;">
+               onerror="this.onerror=null; this.src='/teams/${team.id}.png'; this.onerror=function(){ this.style.display='none'; this.parentNode.querySelector('.team-modal-cover-placeholder').style.display='flex'; }" />
+          <div class="team-modal-cover-placeholder" style="display: none;">
             👥
           </div>
-          <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent"></div>
-        </div>
-
-        <!-- Overlapping Circular Team Avatar -->
-        <div class="absolute" style="top: 130px; left: 24px; width: 84px; height: 84px; border-radius: 50%; padding: 4px; background: #060914; box-shadow: 0 6px 15px rgba(0,0,0,0.6); z-index: 10;">
-          <div class="w-full h-full rounded-full overflow-hidden relative border border-slate-800" style="box-shadow: 0 0 15px ${isMD ? 'rgba(163, 230, 53, 0.4)' : 'rgba(34, 211, 238, 0.4)'};">
-            <img src="/teams/${team.id}.jpg" 
-                 onerror="this.onerror=null; this.src='/teams/${team.id}.png'; this.onerror=function(){ this.style.display='none'; this.parentNode.querySelector('.avatar-placeholder').style.display='flex'; }"
-                 style="width: 100%; height: 100%; object-fit: cover;" />
-            <div class="avatar-placeholder flex items-center justify-center font-bold text-slate-400 bg-slate-800" style="display: none; width: 100%; height: 100%; font-size: 2rem;">
-              👥
+          
+          <!-- Spotlight Gradient overlay for rich contrast -->
+          <div class="team-modal-spotlight"></div>
+          
+          <!-- Team Header Content -->
+          <div class="team-modal-header-content">
+            <div class="flex items-center gap-1">
+              <span class="team-modal-cat-tag ${themeColor}">${category}</span>
+              <span class="team-modal-id-tag">ID: ${team.id}</span>
             </div>
+            <h3 class="team-modal-name">${team.name}</h3>
           </div>
         </div>
 
         <!-- Team Profile Body -->
-        <div class="p-6 pt-10" style="background: linear-gradient(180deg, rgba(15, 22, 42, 0.98) 0%, rgba(8, 12, 26, 0.99) 100%);">
-          <div class="flex items-start justify-between mb-4 flex-wrap gap-2">
-            <div>
-              <h3 class="text-lg font-black text-slate-100 flex items-center gap-2 m-0" style="font-family: var(--font-heading);">${team.name}</h3>
-              <div class="text-xs text-muted font-semibold mt-1 flex items-center gap-2">
-                <span class="${isMD ? 'text-volt' : 'text-cyan'} font-bold">${category}</span>
-                <span class="text-slate-600">•</span>
-                <span>Team ID: ${team.id}</span>
+        <div class="team-modal-body">
+          
+          <!-- Players Grid -->
+          <div class="team-modal-players-grid">
+            <div class="team-modal-player-card">
+              <div class="team-modal-player-icon ${themeColor}">🏸</div>
+              <div class="team-modal-player-info">
+                <div class="team-modal-player-role">Player 1</div>
+                <div class="team-modal-player-name" title="${team.player1}">${team.player1}</div>
               </div>
             </div>
-            <div class="badge bg-slate-900 border border-slate-800 px-3 py-1 rounded-full text-slate-300 font-black text-xs" style="height: fit-content; line-height: 1;">
-              Rank #${rank}
-            </div>
-          </div>
-
-          <!-- Players Section -->
-          <div class="glass-panel border border-slate-800/80 p-4 rounded-xl mb-5 flex flex-col gap-3" style="box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);">
-            <div class="text-5xs font-bold uppercase tracking-wider text-slate-500">🏆 Players partnership</div>
-            <div class="flex items-center gap-3">
-              <div class="flex items-center justify-center font-bold text-slate-950 ${isMD ? 'bg-volt' : 'bg-cyan'} rounded-full" style="width: 26px; height: 26px; font-size: 0.7rem; flex-shrink: 0;">🏸</div>
-              <div class="text-left">
-                <div class="text-sm font-extrabold text-slate-200">${team.player1}</div>
-                <div class="text-5xs text-muted uppercase tracking-wider">Player 1</div>
-              </div>
-            </div>
-            <div class="flex items-center gap-3 border-t border-slate-900/60 pt-2.5">
-              <div class="flex items-center justify-center font-bold text-slate-950 ${isMD ? 'bg-volt' : 'bg-cyan'} rounded-full" style="width: 26px; height: 26px; font-size: 0.7rem; flex-shrink: 0;">🏸</div>
-              <div class="text-left">
-                <div class="text-sm font-extrabold text-slate-200">${team.player2}</div>
-                <div class="text-5xs text-muted uppercase tracking-wider">Player 2</div>
+            <div class="team-modal-player-card">
+              <div class="team-modal-player-icon ${themeColor}">🏸</div>
+              <div class="team-modal-player-info">
+                <div class="team-modal-player-role">Player 2</div>
+                <div class="team-modal-player-name" title="${team.player2}">${team.player2}</div>
               </div>
             </div>
           </div>
 
-          <!-- Dynamic Telemetry Grid -->
-          <div class="grid grid-cols-3 gap-3 mb-5">
-            <div class="bg-slate-950/80 border border-slate-900 p-3 rounded-xl text-center">
-              <div class="text-base font-black text-slate-100 font-mono">${played}</div>
-              <div class="text-5xs uppercase tracking-wider text-slate-500 font-semibold mt-1">Played</div>
+          <!-- Aligned capsule Match summary bar -->
+          <div class="team-modal-summary-bar">
+            <div class="team-modal-summary-item">
+              <div class="team-modal-summary-label">Played</div>
+              <div class="team-modal-summary-value">${played}</div>
             </div>
-            <div class="bg-slate-950/80 border border-slate-900 p-3 rounded-xl text-center">
-              <div class="text-base font-black ${isMD ? 'text-volt' : 'text-cyan'} font-mono">${wins}</div>
-              <div class="text-5xs uppercase tracking-wider text-slate-500 font-semibold mt-1">Won</div>
+            <div class="team-modal-summary-divider"></div>
+            <div class="team-modal-summary-item">
+              <div class="team-modal-summary-label won">Won</div>
+              <div class="team-modal-summary-value won">${wins}</div>
             </div>
-            <div class="bg-slate-950/80 border border-slate-900 p-3 rounded-xl text-center">
-              <div class="text-base font-black ${losses > 0 ? 'text-rose-400' : 'text-slate-400'} font-mono">${losses}</div>
-              <div class="text-5xs uppercase tracking-wider text-slate-500 font-semibold mt-1">Lost</div>
+            <div class="team-modal-summary-divider"></div>
+            <div class="team-modal-summary-item">
+              <div class="team-modal-summary-label lost">Lost</div>
+              <div class="team-modal-summary-value lost">${losses}</div>
             </div>
           </div>
 
-          <!-- Extended Telemetry detail list -->
-          <div class="bg-slate-950/80 border border-slate-900 p-4 rounded-xl text-2xs font-mono mb-5 flex flex-col gap-2.5">
-            <div class="flex items-center justify-between text-slate-400">
-              <span>Standing Points:</span>
-              <span class="font-extrabold text-slate-100">${pts} Points</span>
+          <!-- Esports Telemetry Grid -->
+          <div class="team-modal-telemetry-grid">
+            <!-- Standing Points -->
+            <div class="team-modal-telemetry-card">
+              <div class="team-modal-telemetry-header">
+                <span class="team-modal-telemetry-icon">🏆</span>
+                <span class="team-modal-telemetry-label">Standing Points</span>
+              </div>
+              <div class="team-modal-telemetry-value-row">
+                <span class="team-modal-telemetry-value">${pts}</span>
+                <span class="team-modal-telemetry-unit">pts</span>
+              </div>
             </div>
-            <div class="flex items-center justify-between text-slate-400 border-t border-slate-900/60 pt-2">
-              <span>Sets Won / Lost:</span>
-              <div class="flex items-center gap-2">
-                <span class="text-slate-200">${setsWon}-${setsLost}</span>
-                <span class="text-5xs font-bold px-1.5 py-0.5 rounded ${netSets > 0 ? 'bg-emerald-500/10 text-emerald-400' : netSets < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'}">
-                  ${netSets > 0 ? '+' : ''}${netSets} Net
+            
+            <!-- Win Rate -->
+            <div class="team-modal-telemetry-card">
+              <div class="team-modal-telemetry-header">
+                <span class="team-modal-telemetry-icon">📈</span>
+                <span class="team-modal-telemetry-label">Win Rate</span>
+              </div>
+              <div class="team-modal-telemetry-value-row">
+                <span class="team-modal-telemetry-value">${winPercent}</span>
+                <span class="team-modal-telemetry-unit">%</span>
+              </div>
+              <div class="team-modal-progress-track">
+                <div class="team-modal-progress-bar ${themeColor}" style="width: ${winPercent}%;"></div>
+              </div>
+            </div>
+
+            <!-- Sets Diff -->
+            <div class="team-modal-telemetry-card">
+              <div class="team-modal-telemetry-header">
+                <span class="team-modal-telemetry-icon">🎾</span>
+                <span class="team-modal-telemetry-label">Sets Diff</span>
+              </div>
+              <div class="team-modal-telemetry-value-row">
+                <span class="team-modal-telemetry-value" style="font-size: 1.25rem;">${setsWon}-${setsLost}</span>
+                <span class="team-modal-diff-badge ${netSets > 0 ? 'positive' : netSets < 0 ? 'negative' : 'neutral'}">
+                  ${netSets > 0 ? '+' : ''}${netSets}
                 </span>
               </div>
             </div>
-            <div class="flex items-center justify-between text-slate-400 border-t border-slate-900/60 pt-2">
-              <span>Points Won / Lost:</span>
-              <div class="flex items-center gap-2">
-                <span class="text-slate-200">${pointsWon}-${pointsLost}</span>
-                <span class="text-5xs font-bold px-1.5 py-0.5 rounded ${netPoints > 0 ? 'bg-emerald-500/10 text-emerald-400' : netPoints < 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'}">
-                  ${netPoints > 0 ? '+' : ''}${netPoints} Net
+
+            <!-- Points Diff -->
+            <div class="team-modal-telemetry-card">
+              <div class="team-modal-telemetry-header">
+                <span class="team-modal-telemetry-icon">🎯</span>
+                <span class="team-modal-telemetry-label">Points Diff</span>
+              </div>
+              <div class="team-modal-telemetry-value-row">
+                <span class="team-modal-telemetry-value" style="font-size: 1.25rem;">${pointsWon}-${pointsLost}</span>
+                <span class="team-modal-diff-badge ${netPoints > 0 ? 'positive' : netPoints < 0 ? 'negative' : 'neutral'}">
+                  ${netPoints > 0 ? '+' : ''}${netPoints}
                 </span>
               </div>
-            </div>
-            <div class="flex items-center justify-between text-slate-400 border-t border-slate-900/60 pt-2">
-              <span>Win Ratio Percentage:</span>
-              <span class="font-extrabold text-slate-100">${winPercent}% rate</span>
             </div>
           </div>
 
           <!-- Form guide -->
-          <div class="flex items-center justify-between bg-slate-950/80 border border-slate-900 p-3 rounded-xl text-2xs">
-            <span class="font-extrabold uppercase tracking-wider text-slate-500" style="font-size: 0.55rem;">Form Guide</span>
-            <div class="flex items-center gap-1.5">
+          <div class="team-modal-form-row">
+            <div class="team-modal-form-header">
+              <span class="team-modal-telemetry-icon">📊</span>
+              <span class="team-modal-form-label">Form Guide</span>
+            </div>
+            <div class="team-modal-form-list">
               ${formPillsHtml}
             </div>
           </div>
@@ -2097,7 +2169,6 @@ class BadmintonApp {
   }
 
   showSpectatorMatchEndNotice(match) {
-    const isVi = this.lang === 'vi';
     const stage = match.stage || 'Group Stage';
     
     // Find winner name
@@ -2107,48 +2178,39 @@ class BadmintonApp {
     }
 
     // Stage-specific celebration details mapping
-    let title = isVi ? 'CHIẾN THẮNG TRẬN ĐẤU!' : 'WIN THE MATCH!';
-    let subtitle = isVi ? 'TRẬN ĐẤU ĐÃ KẾT THÚC' : 'MATCH COMPLETED';
-    let message = isVi 
-      ? `🎉 Chúc mừng đội **${winnerName}** đã xuất sắc giành chiến thắng trong trận đấu này! 🎉`
-      : `🎉 Congratulations to **${winnerName}** on winning this match! 🎉`;
+    let title = 'WIN THE MATCH!';
+    let subtitle = 'MATCH COMPLETED';
+    let message = `🎉 Congratulations to **${winnerName}** on winning this match! 🎉`;
     let icon = '🏸';
-    let labelWinner = isVi ? 'ĐỘI GIÀNH CHIẾN THẮNG' : 'MATCH WINNER';
+    let labelWinner = 'MATCH WINNER';
     let themeColor = '#84cc16'; // volt green
     let glowFilter = 'rgba(132, 204, 22, 0.45)';
 
     if (stage === 'Semi-finals') {
-      title = isVi ? 'CHÚC MỪNG CHIẾN THẮNG BÁN KẾT!' : 'CONGRATULATIONS ON WINNING!';
-      subtitle = isVi ? 'GIÀNH VÉ VÀO CHUNG KẾT' : 'QUALIFIED FOR THE FINALS';
-      message = isVi
-        ? `⚡ Tuyệt vời! Đội **${winnerName}** đã giành chiến thắng trận đấu Bán Kết và chính thức giành quyền bước vào trận Chung Kết tranh chức vô địch (Grand Final)! 🏆`
-        : `⚡ Spectacular! **${winnerName}** won the Semi-finals and officially qualified for the championship Grand Final! 🏆`;
+      title = 'CONGRATULATIONS ON WINNING!';
+      subtitle = 'QUALIFIED FOR THE FINALS';
+      message = `⚡ Spectacular! **${winnerName}** won the Semi-finals and officially qualified for the championship Grand Final! 🏆`;
       icon = '🏅';
-      labelWinner = isVi ? 'ĐỘI CHIẾN THẮNG BÁN KẾT' : 'SEMI-FINALS WINNER';
+      labelWinner = 'SEMI-FINALS WINNER';
       themeColor = '#06b6d4'; // Cyan
       glowFilter = 'rgba(6, 182, 212, 0.45)';
     } else if (stage === 'Grand Final') {
-      title = isVi ? 'NHÀ VÔ ĐỊCH GIẢI ĐẤU!' : 'TOURNAMENT CHAMPIONS!';
-      subtitle = isVi ? 'CÚP VÔ ĐỊCH GEAR GAMES 2026' : 'GEAR GAMES BADMINTON 2026 CUP';
-      message = isVi
-        ? `👑 TÂN VƯƠNG GIẢI ĐẤU! Xin được nhiệt liệt vinh danh nhà vô địch Gear Games Badminton 2026: **${winnerName}**! Chiến thắng lịch sử vô cùng xứng đáng! 🏆🥇`
-        : `👑 CHAMPIONS! Huge congratulations to the ultimate champions of the Gear Games 2026 Badminton Tournament: **${winnerName}**! A historic and well-deserved victory! 🏆🥇`;
+      title = 'TOURNAMENT CHAMPIONS!';
+      subtitle = 'GEAR GAMES BADMINTON 2026 CUP';
+      message = `👑 CHAMPIONS! Huge congratulations to the ultimate champions of the Gear Games 2026 Badminton Tournament: **${winnerName}**! A historic and well-deserved victory! 🏆🥇`;
       icon = '🏆';
-      labelWinner = isVi ? 'QUÁN QUÂN GIẢI ĐẤU' : 'TOURNAMENT CHAMPIONS';
+      labelWinner = 'TOURNAMENT CHAMPIONS';
       themeColor = '#fbbf24'; // Gold
       glowFilter = 'rgba(251, 191, 36, 0.5)';
     } else if (stage === 'Bronze Match') {
-      title = isVi ? 'ĐOẠT HẠNG BA CHUNG CUỘC!' : 'BRONZE MEDALISTS!';
-      subtitle = isVi ? 'HUY CHƯƠNG ĐỒNG THUỘC VỀ' : 'BRONZE MEDAL SECURED';
-      message = isVi
-        ? `🥉 Tuyệt vời! Đội **${winnerName}** đã giành chiến thắng trận tranh Hạng Ba và xuất sắc mang về tấm **Huy Chương Đồng** danh giá! 🥉`
-        : `🥉 Superb! **${winnerName}** won the Bronze Match and successfully claimed the prestigious **Bronze Medal**! 🥉`;
+      title = 'BRONZE MEDALISTS!';
+      subtitle = 'BRONZE MEDAL SECURED';
+      message = `🥉 Superb! **${winnerName}** won the Bronze Match and successfully claimed the prestigious **Bronze Medal**! 🥉`;
       icon = '🥉';
-      labelWinner = isVi ? 'HẠNG BA CHUNG CUỘC' : 'BRONZE WINNER';
+      labelWinner = 'BRONZE WINNER';
       themeColor = '#ea580c'; // Bronze orange
       glowFilter = 'rgba(234, 88, 12, 0.45)';
     }
-
 
     const modal = document.createElement('div');
     modal.className = 'match-end-modal-backdrop relative';
@@ -2178,14 +2240,12 @@ class BadmintonApp {
           <p class="text-xs text-slate-200 mb-6 font-semibold px-2" style="line-height: 1.6;">${message}</p>
           
           <button class="btn w-full py-3 font-extrabold uppercase tracking-wider text-xs flex items-center justify-center gap-2" id="spec-end-btn-home" style="font-size: 0.85rem; background-color: ${themeColor}; color: #000; box-shadow: 0 4px 14px ${glowFilter}; border: none;">
-            🏠 ${isVi ? 'Quay về trang chủ' : 'Back to Homepage'}
+            🏠 Back to Homepage
           </button>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
-
-
 
     document.getElementById('spec-end-btn-home').onclick = () => {
       modal.classList.add('animate-fade-out');
@@ -2207,11 +2267,11 @@ class BadmintonApp {
     if (enabled) {
       localStorage.setItem('badminton_demo_mock_active', 'true');
       this.startDemoSimulation();
-      this.admin.showToast(this.lang === 'vi' ? 'Đã kích hoạt chế độ Live Demo!' : 'Live Demo Simulation activated!', 'success');
+      this.admin.showToast('Live Demo Simulation activated!', 'success');
     } else {
       localStorage.removeItem('badminton_demo_mock_active');
       this.stopDemoSimulation();
-      this.admin.showToast(this.lang === 'vi' ? 'Đã tắt chế độ Live Demo!' : 'Live Demo Simulation stopped!', 'info');
+      this.admin.showToast('Live Demo Simulation stopped!', 'info');
     }
     
     // Broadcast toggle status to other tabs
@@ -2393,7 +2453,6 @@ class BadmintonApp {
   }
 
   renderLivePitches() {
-    const isVi = this.lang === 'vi';
     const pitches = ["Pitch 15", "Pitch 16", "Pitch 20", "Pitch 21"];
     const liveMatches = this.sync.getLiveMatches();
 
@@ -2437,7 +2496,7 @@ class BadmintonApp {
 
             <div class="flex items-center gap-2 pt-2 border-t border-slate-800/80">
               <button class="btn btn-2xs btn-outline btn-spectate-match flex-1 font-bold" data-match-id="${match.id}">
-                🔍 ${isVi ? 'Xem Live' : 'Spectate'}
+                🔍 Spectate
               </button>
               ${isRefAuthorized ? `
                 <button class="btn btn-2xs btn-outline btn-join-match font-bold" style="border-color: var(--volt); color: var(--volt);" data-match-id="${match.id}">
@@ -2464,17 +2523,17 @@ class BadmintonApp {
             
             <div class="text-center py-2">
               <div class="text-5xs text-muted truncate" title="${nextMatch.team1}">${nextMatch.team1}</div>
-              <div class="text-4xs font-bold text-slate-400 py-0.5">${isVi ? 'ĐỢI TRẬN' : 'SCHEDULED'}</div>
+              <div class="text-4xs font-bold text-slate-400 py-0.5">SCHEDULED</div>
               <div class="text-5xs text-muted truncate" title="${nextMatch.team2}">${nextMatch.team2}</div>
             </div>
 
             <div class="pt-2 border-t border-slate-800/80">
               ${isRefAuthorized ? `
                 <button class="btn btn-2xs btn-outline btn-join-match btn-block font-bold" style="border-color: var(--volt); color: var(--volt);" data-match-id="${nextMatch.id}">
-                  🏸 ${isVi ? 'Khai Mạc Trận' : 'Start Match'}
+                  🏸 Start Match
                 </button>
               ` : `
-                <div class="text-center text-5xs text-slate-600 font-semibold py-1">💤 ${isVi ? 'Chờ thi đấu' : 'Awaiting start'}</div>
+                <div class="text-center text-5xs text-slate-600 font-semibold py-1">💤 Awaiting start</div>
               `}
             </div>
           </div>
@@ -2486,7 +2545,7 @@ class BadmintonApp {
         <div class="live-pitch-card glass-panel border border-slate-900 p-3 rounded-lg flex flex-col justify-center items-center" style="opacity: 0.55; min-height: 125px;">
           <span class="text-lg">💤</span>
           <span class="font-extrabold text-slate-400 text-4xs mt-1.5">${pitch}</span>
-          <span class="text-5xs text-slate-600 font-semibold mt-0.5">${isVi ? 'Sân đang trống' : 'Court Empty'}</span>
+          <span class="text-5xs text-slate-600 font-semibold mt-0.5">Court Empty</span>
         </div>
       `;
     }).join('');
@@ -2494,7 +2553,7 @@ class BadmintonApp {
 
   openSpectateOverlay(matchId) {
     if (document.getElementById('umpire-overlay-container') && !document.getElementById('umpire-overlay-container').classList.contains('hidden')) {
-      alert(this.lang === 'vi' ? 'Bạn đang ở trong phòng Trọng tài. Hãy thoát phòng Trọng tài trước!' : 'You are in the Umpire Control room. Please exit Umpire mode first!');
+      alert('You are in the Umpire Control room. Please exit Umpire mode first!');
       return;
     }
 
@@ -2529,7 +2588,6 @@ class BadmintonApp {
 
     container.classList.remove('hidden');
 
-    const isVi = this.lang === 'vi';
     const match = this.state.matches.find(m => m.id === matchId);
     const liveMatches = this.sync.getLiveMatches();
     const live = liveMatches[matchId];
@@ -2649,8 +2707,8 @@ class BadmintonApp {
             </span>
             <span class="text-xs font-bold text-slate-300">${match.pitch} | ${match.stage}</span>
           </div>
-          <h2 class="text-sm font-black m-0 text-glow-volt">${isVi ? 'SÂN VẬN ĐỘNG TRỰC TUYẾN' : 'LIVE STADIUM SCREEN'}</h2>
-          <button class="btn btn-xs btn-neutral" id="spectate-btn-close">✕ ${isVi ? 'Thoát Xem' : 'Exit'}</button>
+          <h2 class="text-sm font-black m-0 text-glow-volt">LIVE STADIUM SCREEN</h2>
+          <button class="btn btn-xs btn-neutral" id="spectate-btn-close">✕ Exit</button>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
@@ -2690,15 +2748,13 @@ class BadmintonApp {
             </div>
 
             <div class="bg-slate-900/40 p-4 rounded border border-slate-800 text-center text-4xs text-slate-500 font-semibold leading-relaxed">
-              📣 ${isVi 
-                ? 'Màn hình trực tiếp tự động đồng bộ kết quả từ Bàn Trọng Tài thông qua kênh liên lạc BroadcastChannel độ trễ bằng không.' 
-                : 'Spectator display updates automatically in real-time as the referee enters scores on their device.'}
+              📣 Spectator display updates automatically in real-time as the referee enters scores on their device.
             </div>
           </div>
 
           <!-- Spectator Court Simulator Column (Grid Span 5) -->
           <div class="lg:col-span-5 flex flex-col items-center gap-4 bg-slate-950/45 p-4 rounded-lg border border-slate-900/60">
-            <h4 class="text-5xs font-bold uppercase tracking-widest text-slate-500 m-0">${isVi ? 'MÔ PHỎNG VỊ TRÍ VẬN ĐỘNG VIÊN' : 'LIVE COURT VISUALIZER'}</h4>
+            <h4 class="text-5xs font-bold uppercase tracking-widest text-slate-500 m-0">LIVE COURT VISUALIZER</h4>
             <div style="width: 100%; max-width: 250px; aspect-ratio: 3/5;">
               <svg class="court-svg spectate-court-svg" viewBox="0 0 300 500" width="100%" height="100%">
                 <defs>

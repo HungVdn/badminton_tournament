@@ -5,7 +5,7 @@ export class CourtSimulator {
     this.servingTeam = 'A'; // 'A' or 'B'
     this.serverIndex = 0; // 0 or 1
     this.receiverIndex = 0; // 0 or 1
-    this.lang = 'vi';
+    this.lang = 'en';
     
     // Team players mock data
     this.teamAPlayers = ["Player 1", "Player 2"];
@@ -15,7 +15,7 @@ export class CourtSimulator {
   }
 
   setLanguage(lang) {
-    this.lang = lang;
+    this.lang = 'en';
     this.render();
   }
 
@@ -53,24 +53,16 @@ export class CourtSimulator {
     const receiverName = this.isEven ? this.teamBPlayers[0] : this.teamBPlayers[1];
     const receiverPartnerName = this.isEven ? this.teamBPlayers[1] : this.teamBPlayers[0];
 
-    const labelScoreEven = this.lang === 'vi' ? 'Điểm Chẵn (0, 2, 4...)' : 'Even Score (0, 2, 4...)';
-    const labelScoreOdd = this.lang === 'vi' ? 'Điểm Lẻ (1, 3, 5...)' : 'Odd Score (1, 3, 5...)';
-    const labelCourtRules = this.lang === 'vi' ? 'Mô Phỏng Luật Giao Cầu Đôi' : 'Doubles Service Simulator';
-    const labelExplanation = this.lang === 'vi' 
-      ? `Đội giao cầu (Phía dưới) có điểm số **${this.isEven ? 'CHẴN' : 'LẺ'}**:` 
-      : `Serving Team (Bottom) has an **${this.isEven ? 'EVEN' : 'ODD'}** score:`;
+    const labelScoreEven = 'Even Score (0, 2, 4...)';
+    const labelScoreOdd = 'Odd Score (1, 3, 5...)';
+    const labelCourtRules = 'Doubles Service Simulator';
+    const labelExplanation = `Serving Team (Bottom) has an **${this.isEven ? 'EVEN' : 'ODD'}** score:`;
 
-    const explanationDetail = this.lang === 'vi'
-      ? `<ul>
-          <li><strong>Người giao cầu:</strong> <span class="highlight-volt">${serverName}</span> giao cầu từ ô bên <strong>${this.isEven ? 'PHẢI' : 'TRÁI'}</strong>.</li>
-          <li><strong>Người nhận cầu:</strong> <span class="highlight-cyan">${receiverName}</span> đứng ô đối diện nhận cầu.</li>
-          <li><strong>Vùng cầu hợp lệ:</strong> Ô giao cầu đôi (rộng hơn nhưng ngắn hơn vùng giao đơn) được tô viền sáng.</li>
-         </ul>`
-      : `<ul>
-          <li><strong>Server:</strong> <span class="highlight-volt">${serverName}</span> serves from the <strong>${this.isEven ? 'RIGHT' : 'LEFT'}</strong> court.</li>
-          <li><strong>Receiver:</strong> <span class="highlight-cyan">${receiverName}</span> stands in the diagonal court to receive.</li>
-          <li><strong>Valid Service Zone:</strong> The doubles service court (wider but shorter than singles) is highlighted.</li>
-         </ul>`;
+    const explanationDetail = `<ul>
+        <li><strong>Server:</strong> <span class="highlight-volt">${serverName}</span> serves from the <strong>${this.isEven ? 'RIGHT' : 'LEFT'}</strong> court.</li>
+        <li><strong>Receiver:</strong> <span class="highlight-cyan">${receiverName}</span> stands in the diagonal court to receive.</li>
+        <li><strong>Valid Service Zone:</strong> The doubles service court (wider but shorter than singles) is highlighted.</li>
+       </ul>`;
 
     // SVG coordinates mapping:
     // Court size: width = 300, height = 500
@@ -216,7 +208,7 @@ export class CourtSimulator {
           
           <div class="court-controls-wrapper flex flex-col justify-between">
             <div>
-              <div class="selector-title">${this.lang === 'vi' ? 'Trạng Thái Điểm Số' : 'Score Status'}</div>
+              <div class="selector-title">Score Status</div>
               <div class="sim-toggle-buttons grid grid-cols-2 gap-2 mb-4">
                 <button class="btn-toggle-sim ${this.isEven ? 'active glow-volt' : ''}" id="sim-btn-even">
                   ${labelScoreEven}
@@ -236,9 +228,7 @@ export class CourtSimulator {
             </div>
             
             <div class="court-sim-footer mt-4 p-3 glass-panel rounded-lg text-xs text-muted">
-              ${this.lang === 'vi' 
-                ? '💡 <strong>Gợi ý:</strong> Click trực tiếp vào ô sân dưới để giao chẵn/lẻ. Vị trí giao cầu đổi bên khi và chỉ khi đội giao cầu thắng pha cầu đó và ghi điểm chẵn/lẻ.'
-                : '💡 <strong>Tip:</strong> Click directly on the bottom court boxes to toggle even/odd service. Players only swap courts when their team wins a point on their own serve.'}
+              💡 <strong>Tip:</strong> Click directly on the bottom court boxes to toggle even/odd service. Players only swap courts when their team wins a point on their own serve.
             </div>
           </div>
         </div>
