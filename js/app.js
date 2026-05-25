@@ -1571,19 +1571,18 @@ class BadmintonApp {
             <div class="team-card-banner w-full" style="height: 52px; background: linear-gradient(135deg, ${isMD ? 'rgba(163, 230, 53, 0.15)' : 'rgba(34, 211, 238, 0.15)'} 0%, rgba(15, 22, 42, 0.6) 100%); border-b: 1px solid rgba(255, 255, 255, 0.04);"></div>
 
             <!-- Team Image Circular Avatar overlapping banner -->
-            <div class="team-card-avatar-wrapper absolute" style="top: 20px; left: 16px; z-index: 10;">
-              <div class="relative w-16 h-16 rounded-full overflow-hidden border-3 border-slate-950 shadow-lg" style="box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 15px ${isMD ? 'rgba(163, 230, 53, 0.2)' : 'rgba(34, 211, 238, 0.2)'};">
+            <div class="team-card-avatar-wrapper">
+              <div class="team-card-avatar-inner" style="box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 15px ${isMD ? 'rgba(163, 230, 53, 0.2)' : 'rgba(34, 211, 238, 0.2)'};">
                 <img src="/teams/${team.id}.jpg" 
                      onerror="this.onerror=null; this.src='/teams/${team.id}.png'; this.onerror=function(){ this.style.display='none'; this.parentNode.querySelector('.team-avatar-placeholder').style.display='flex'; }" 
-                     class="w-full h-full object-cover team-card-img" 
-                     style="height: 100%; width: 100%; object-fit: cover;" />
-                <div class="team-avatar-placeholder absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950 text-slate-400" style="display: none;">
-                  <span style="font-size: 1.25rem;">👥</span>
+                     class="team-card-img" />
+                <div class="team-avatar-placeholder" style="display: none;">
+                  <span>👥</span>
                 </div>
               </div>
             </div>
 
-            <div class="p-4 pt-9 flex-1 flex flex-col justify-between" style="margin-top: 0;">
+            <div class="team-card-body">
               <div>
 
                 <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
@@ -1676,7 +1675,7 @@ class BadmintonApp {
             <span class="${themeColor}">${isMD ? '💎' : '🔮'}</span>
             <span class="${themeColor}">${category} (${teams.length} Teams)</span>
           </h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div class="team-cards-grid">
             ${teamCards}
           </div>
         </div>
