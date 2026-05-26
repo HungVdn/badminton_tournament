@@ -635,10 +635,12 @@ class BadmintonApp {
       // Custom badge style
       let rankBadge = `<span class="rank-circle font-bold ${rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : ''}">${rank}</span>`;
       let advanceTag = '';
-      if (isTop4) {
-        advanceTag = `<span class="advance-tag neon-green">SEMIS</span>`;
-      } else {
-        advanceTag = `<span class="advance-tag neon-red">OUT</span>`;
+      if (isComplete) {
+        if (isTop4) {
+          advanceTag = `<span class="advance-tag neon-green">SEMIS</span>`;
+        } else {
+          advanceTag = `<span class="advance-tag neon-red">OUT</span>`;
+        }
       }
 
       // Check if team has finished all of their matches (4 matches total in a 5-team group)
@@ -1093,6 +1095,7 @@ class BadmintonApp {
 
     const renderMiniBracketStandings = (category) => {
       const standings = this.state.calculateStandings(category);
+      const isComplete = this.state.isGroupStageComplete(category);
       return standings.map((team, idx) => {
         const rank = idx + 1;
         const isTop4 = rank <= 4;
@@ -1114,7 +1117,7 @@ class BadmintonApp {
               <span class="rank-circle font-bold ${rankBadgeClass}" style="width: 18px; height: 18px; font-size: 0.55rem; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;">${rank}</span>
               <span class="font-bold text-slate-200 truncate">${team.name}</span>
             </div>
-            <span class="font-extrabold ${advanceColor}" style="font-size: 0.55rem; flex-shrink: 0;">${seedLabel}</span>
+            ${isComplete ? `<span class="font-extrabold ${advanceColor}" style="font-size: 0.55rem; flex-shrink: 0;">${seedLabel}</span>` : ''}
           </div>
         `;
       }).join('');
