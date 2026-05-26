@@ -109,7 +109,6 @@ class BadmintonApp {
     this.confetti = new ConfettiShower();
     this.countdownTimer = null;
     this.activeSpectateMatchId = null;
-    this.demoInterval = null;
     
     // Core controllers
     this.sync = new TournamentSync(this.state, (type, data) => this.handleSyncUpdate(type, data));
@@ -125,11 +124,6 @@ class BadmintonApp {
     this.setupDOM();
     this.setupEventListeners();
     this.admin.setLanguage(this.lang);
-
-    // Auto-activate demo simulation if it was active
-    if (localStorage.getItem('badminton_demo_mock_active') === 'true') {
-      this.startDemoSimulation();
-    }
 
     this.renderActiveView();
     this.updateNavbar();
@@ -253,13 +247,6 @@ class BadmintonApp {
       });
     }
 
-    // Live Center event delegation
-    document.body.addEventListener('change', (e) => {
-      const mockSwitch = e.target.closest('#demo-mock-switch');
-      if (mockSwitch) {
-        this.toggleDemoSimulation(mockSwitch.checked);
-      }
-    });
 
     document.body.addEventListener('click', (e) => {
       const spectateBtn = e.target.closest('.btn-spectate-match');
@@ -502,15 +489,6 @@ class BadmintonApp {
               🔴 LIVE COURT TRACKER
             </span>
           </h3>
-          
-          <!-- Simulation switcher -->
-          <div class="flex items-center gap-2.5 bg-slate-900/70 px-3 py-1.5 rounded border border-slate-800 text-4xs">
-            <span class="font-bold text-slate-400">🤖 LIVE DEMO MOCK</span>
-            <label class="demo-switch-toggle" style="position: relative; display: inline-block; width: 34px; height: 18px;">
-              <input type="checkbox" id="demo-mock-switch" style="opacity: 0; width: 0; height: 0;" ${localStorage.getItem('badminton_demo_mock_active') === 'true' ? 'checked' : ''}>
-              <span class="demo-switch-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .3s; border-radius: 34px; border: 1px solid rgba(255,255,255,0.05);"></span>
-            </label>
-          </div>
         </div>
         
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -2139,16 +2117,6 @@ class BadmintonApp {
     // Re-render active view to capture live score overlays instantly
     this.renderActiveView();
 
-    // Sync mock toggles
-    if (type === 'MOCK_TOGGLE') {
-      const slider = document.getElementById('demo-mock-switch');
-      if (slider) slider.checked = data.enabled;
-      if (data.enabled) {
-        this.startDemoSimulation(true);
-      } else {
-        this.stopDemoSimulation(true);
-      }
-    }
 
     // Update active spectate overlay
     if (this.activeSpectateMatchId && data && data.matchId === this.activeSpectateMatchId) {
@@ -2264,195 +2232,6 @@ class BadmintonApp {
         this.switchTab('dashboard');
       }, 300);
     };
-  }
-
-  toggleDemoSimulation(enabled) {
-    if (enabled) {
-      localStorage.setItem('badminton_demo_mock_active', 'true');
-      this.startDemoSimulation();
-      this.admin.showToast('Live Demo Simulation activated!', 'success');
-    } else {
-      localStorage.removeItem('badminton_demo_mock_active');
-      this.stopDemoSimulation();
-      this.admin.showToast('Live Demo Simulation stopped!', 'info');
-    }
-    
-    // Broadcast toggle status to other tabs
-    this.sync.broadcast('LIVE_MOCK_TOGGLE', { enabled });
-  }
-
-  startDemoSimulation(silent = false) {
-    this.stopDemoSimulation(true);
-    
-    this.demoInterval = setInterval(() => {
-      this.stepDemoSimulation();
-    }, 4500);
-  }
-
-  stopDemoSimulation(silent = false) {
-    if (this.demoInterval) {
-      clearInterval(this.demoInterval);
-      this.demoInterval = null;
-    }
-    
-    // Clean up any lingering live matches to restore scheduled states
-    const liveMatches = this.sync.getLiveMatches();
-    Object.keys(liveMatches).forEach(matchId => {
-      this.sync.setMatchLiveStatus(matchId, false);
-      const match = this.state.matches.find(m => m.id === matchId);
-      if (match && match.status === 'Live') {
-        match.status = 'Scheduled';
-      }
-    });
-    
-    this.renderActiveView();
-  }
-
-  stepDemoSimulation() {
-    const liveMatches = this.sync.getLiveMatches();
-    const liveKeys = Object.keys(liveMatches);
-
-    // 1. If we have live matches in progress, randomly choose one to increment
-    if (liveKeys.length > 0) {
-      const matchId = liveKeys[Math.floor(Math.random() * liveKeys.length)];
-      const matchData = liveMatches[matchId];
-      
-      const s1Idx = matchData.sets.length - 1;
-      const setScores = matchData.sets[s1Idx] || { t1: 0, t2: 0 };
-      
-      const isT1Point = Math.random() > 0.48;
-      let s1 = setScores.t1;
-      let s2 = setScores.t2;
-
-      if (isT1Point) {
-        if (matchData.servingTeam === 'A') {
-          // Serve hold: swap players
-          const temp = matchData.serverName;
-          matchData.serverName = matchData.partnerName;
-          matchData.partnerName = temp;
-        }
-        s1++;
-        matchData.servingTeam = 'A';
-      } else {
-        if (matchData.servingTeam === 'B') {
-          const temp = matchData.receiverName;
-          matchData.receiverName = matchData.receiverPartnerName;
-          matchData.receiverPartnerName = temp;
-        }
-        s2++;
-        matchData.servingTeam = 'B';
-      }
-
-      matchData.sets[s1Idx] = { t1: s1, t2: s2 };
-      matchData.score1 = s1;
-      matchData.score2 = s2;
-      
-      const scoreToCheck = matchData.servingTeam === 'A' ? s1 : s2;
-      matchData.isEven = scoreToCheck % 2 === 0;
-
-      // Swap receiver to match server diagonal
-      const liveMatchObj = this.state.matches.find(m => m.id === matchId);
-      const team1Obj = this.state.teams.find(t => t.name === liveMatchObj.team1);
-      const team2Obj = this.state.teams.find(t => t.name === liveMatchObj.team2);
-      const t1Players = team1Obj ? [team1Obj.player1, team1Obj.player2] : ["T1 P1", "T1 P2"];
-      const t2Players = team2Obj ? [team2Obj.player1, team2Obj.player2] : ["T2 P1", "T2 P2"];
-
-      // Setup receivers to align diagonals
-      if (matchData.servingTeam === 'A') {
-        matchData.receiverName = matchData.isEven ? t2Players[0] : t2Players[1];
-        matchData.receiverPartnerName = matchData.isEven ? t2Players[1] : t2Players[0];
-      } else {
-        matchData.receiverName = matchData.isEven ? t1Players[0] : t1Players[1];
-        matchData.receiverPartnerName = matchData.isEven ? t1Players[1] : t1Players[0];
-      }
-
-      // Check win set BWF Rules
-      const targetPoints = matchId.includes('SF') || matchId.includes('F-') || matchId.includes('B-') ? 21 : 15;
-      const maxPoints = targetPoints === 15 ? 21 : 30;
-      const maxVal = Math.max(s1, s2);
-      const minVal = Math.min(s1, s2);
-      const diff = maxVal - minVal;
-
-      let isSetWon = false;
-      if (maxVal >= targetPoints && (diff >= 2 || maxVal === maxPoints)) {
-        isSetWon = true;
-      }
-
-      if (isSetWon) {
-        // Record final set
-        matchData.sets[s1Idx] = { t1: s1, t2: s2 };
-        
-        let t1SetsWon = 0;
-        let t2SetsWon = 0;
-        matchData.sets.forEach(s => {
-          if (s.t1 > s.t2) t1SetsWon++;
-          else t2SetsWon++;
-        });
-
-        if (t1SetsWon === 2 || t2SetsWon === 2) {
-          // Match Completed!
-          this.sync.broadcast('LIVE_MATCH_END', { matchId });
-          this.sync.setMatchLiveStatus(matchId, false);
-          
-          const match = this.state.matches.find(m => m.id === matchId);
-          if (match) {
-            this.state.updateMatchScore(matchId, matchData.sets, t1SetsWon, t2SetsWon, 'Completed');
-          }
-          return;
-        } else {
-          // Push Set 2/3
-          matchData.sets.push({ t1: 0, t2: 0 });
-          matchData.score1 = 0;
-          matchData.score2 = 0;
-          matchData.currentSet++;
-          matchData.servingTeam = s1 > s2 ? 'A' : 'B';
-        }
-      }
-
-      // Broadcast score updates to public displays
-      this.sync.broadcast('LIVE_SCORE_UPDATE', {
-        matchId,
-        sets: matchData.sets,
-        score1: matchData.score1,
-        score2: matchData.score2,
-        currentSet: matchData.currentSet,
-        servingTeam: matchData.servingTeam,
-        isEven: matchData.isEven,
-        serverName: matchData.serverName,
-        partnerName: matchData.partnerName,
-        receiverName: matchData.receiverName,
-        receiverPartnerName: matchData.receiverPartnerName
-      });
-
-    } else {
-      // 2. If no active live matches, find first scheduled and start it live!
-      const scheduledMatch = this.state.matches.find(m => m.status === 'Scheduled' && !m.team1.includes('Winner') && !m.team2.includes('Winner') && !m.team1.includes('Loser') && !m.team2.includes('Loser'));
-      if (scheduledMatch) {
-        const team1Obj = this.state.teams.find(t => t.name === scheduledMatch.team1);
-        const team2Obj = this.state.teams.find(t => t.name === scheduledMatch.team2);
-        const t1Players = team1Obj ? [team1Obj.player1, team1Obj.player2] : ["T1 P1", "T1 P2"];
-        const t2Players = team2Obj ? [team2Obj.player1, team2Obj.player2] : ["T2 P1", "T2 P2"];
-
-        const matchState = {
-          sets: [{ t1: 0, t2: 0 }],
-          score1: 0,
-          score2: 0,
-          currentSet: 1,
-          servingTeam: 'A',
-          isEven: true,
-          serverName: t1Players[0],
-          partnerName: t1Players[1],
-          receiverName: t2Players[0],
-          receiverPartnerName: t2Players[1]
-        };
-
-        this.sync.broadcast('LIVE_MATCH_START', {
-          matchId: scheduledMatch.id,
-          matchState
-        });
-        this.sync.setMatchLiveStatus(scheduledMatch.id, true, matchState);
-      }
-    }
   }
 
   renderLivePitches() {

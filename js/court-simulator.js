@@ -7,7 +7,7 @@ export class CourtSimulator {
     this.receiverIndex = 0; // 0 or 1
     this.lang = 'en';
     
-    // Team players mock data
+    // Default team players data
     this.teamAPlayers = ["Player 1", "Player 2"];
     this.teamBPlayers = ["Player 3", "Player 4"];
     

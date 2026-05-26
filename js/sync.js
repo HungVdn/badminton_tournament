@@ -73,15 +73,6 @@ export class TournamentSync {
       case 'LIVE_MATCH_END':
         this.setMatchLiveStatus(payload.matchId, false);
         break;
-      case 'LIVE_MOCK_TOGGLE':
-        // Handle mock toggle synching across tabs
-        if (payload.enabled) {
-          localStorage.setItem('badminton_demo_mock_active', 'true');
-        } else {
-          localStorage.removeItem('badminton_demo_mock_active');
-        }
-        if (this.onRemoteUpdate) this.onRemoteUpdate('MOCK_TOGGLE', payload);
-        break;
     }
   }
 
