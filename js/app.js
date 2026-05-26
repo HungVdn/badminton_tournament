@@ -851,6 +851,15 @@ class BadmintonApp {
       `;
     };
 
+    let noMatchesMsg = "No matches scheduled or completed";
+    if (this.fixtureSearchText.trim() !== '') {
+      noMatchesMsg = "No matches found matching your search";
+    } else if (this.fixtureStatusFilter === 'Scheduled') {
+      noMatchesMsg = "No matches scheduled";
+    } else if (this.fixtureStatusFilter === 'Completed') {
+      noMatchesMsg = "No matches completed";
+    }
+
     return `
       <div class="flex-1 flex flex-col gap-5">
         <h3 class="font-extrabold text-sm flex items-center gap-2 mb-1 pb-2 border-b border-slate-800">
@@ -862,7 +871,7 @@ class BadmintonApp {
           ${catMatches.length === 0 ? `
             <div class="glass-card text-center py-8 px-4 flex flex-col items-center justify-center gap-2 border border-dashed border-slate-800/60" style="background: rgba(15, 23, 42, 0.15); border-radius: 12px;">
               <span class="text-xl">📅</span>
-              <span class="text-slate-400 font-semibold text-xs">No match scheduled/completed</span>
+              <span class="text-slate-400 font-semibold text-xs">${noMatchesMsg}</span>
             </div>
           ` : `
             ${renderStageSection(grandFinal, grandFinalBadge)}
