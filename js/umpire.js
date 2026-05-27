@@ -13,9 +13,10 @@ export class UmpireConsole {
     this.match = this.state.matches.find(m => m.id === matchId);
     if (!this.match) throw new Error(`Match not found: ${matchId}`);
 
-    const isGroup = this.match.stage === 'Group Stage';
-    this.targetPoints = isGroup ? 15 : 21;
-    this.maxPoints = isGroup ? 21 : 30;
+    const stageConfig = this.state.getScoreConfig(this.match.category, this.match.stage);
+    this.targetPoints = stageConfig.targetPoints;
+    this.maxPoints = stageConfig.maxPoints;
+    this.setsToWin = stageConfig.setsToWin;
 
     // Load active teams/players
     this.team1Obj = this.state.teams.find(t => t.name === this.match.team1);
@@ -183,9 +184,10 @@ export class UmpireConsole {
       this.servingTeam = 'B';
     }
 
-    // Check if in Set 3 and score reaches mid-point swap
-    if (this.currentSet === 3 && !this.set3SwapHappened) {
-      const midPoint = this.targetPoints === 15 ? 8 : 11;
+    // Check if in Deciding Set and score reaches mid-point swap
+    const decidingSet = this.setsToWin * 2 - 1;
+    if (this.currentSet === decidingSet && !this.set3SwapHappened) {
+      const midPoint = Math.ceil(this.targetPoints / 2);
       if (this.score1 === midPoint || this.score2 === midPoint) {
         this.set3SwapHappened = true;
         this.showSwapNotice(`⚡ Score reached ${midPoint}! Both teams must swap sides.`);
@@ -243,7 +245,7 @@ export class UmpireConsole {
         else t2SetsWon++;
       });
 
-      if (t1SetsWon === 2 || t2SetsWon === 2) {
+      if (t1SetsWon === this.setsToWin || t2SetsWon === this.setsToWin) {
         // MATCH OVER!
         this.submitMatch(t1SetsWon, t2SetsWon);
       } else {
@@ -534,7 +536,7 @@ export class UmpireConsole {
             <span class="badge bg-danger pulse-dot flex items-center gap-1.5 font-bold">
               <span class="live-dot"></span> LIVE
             </span>
-            <span class="text-xs font-bold text-slate-300">${this.match.pitch} | ${this.match.stage}</span>
+            <span class="text-xs font-bold text-slate-300">${this.match.pitch} | ${this.match.stage} (${this.targetPoints} pts, Best of ${this.setsToWin * 2 - 1})</span>
           </div>
           <h2 class="text-sm font-black m-0 text-glow-volt">UMPIRE CONTROL PANEL</h2>
           <button class="btn btn-xs btn-neutral" id="umpire-btn-close">✕ Exit</button>

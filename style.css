@@ -3193,3 +3193,38 @@ html[data-theme="light"] .bg-bronze-gradient {
   gap: 0.25rem;
 }
 
+/* ==========================================
+   SCORE SETTINGS CONFIGURATION MODAL
+   ========================================== */
+.score-config-modal {
+  max-width: 680px;
+  width: 95%;
+  background: linear-gradient(180deg, #070b19 0%, #03050d 100%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 50px rgba(132, 204, 22, 0.1);
+  animation: modal-scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.score-config-stage-card {
+  transition: all 0.25s ease;
+  background: rgba(15, 23, 42, 0.3);
+}
+
+.score-config-stage-card:hover {
+  border-color: rgba(132, 204, 22, 0.3);
+  box-shadow: 0 0 15px rgba(132, 204, 22, 0.05);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.score-config-preset-btn {
+  transition: all 0.2s ease;
+}
+
+.score-config-preset-btn:hover {
+  background: rgba(132, 204, 22, 0.1);
+  border-color: var(--volt);
+  color: var(--volt);
+  box-shadow: 0 0 10px rgba(132, 204, 22, 0.2);
+}
+

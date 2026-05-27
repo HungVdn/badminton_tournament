@@ -49,6 +49,14 @@ export class AdminPanel {
     adminDiv.id = 'admin-modal-container';
     adminDiv.className = 'modal-backdrop hidden';
     document.body.appendChild(adminDiv);
+
+    // Inject Score Settings Modal structure
+    if (!document.getElementById('score-config-modal-container')) {
+      const configDiv = document.createElement('div');
+      configDiv.id = 'score-config-modal-container';
+      configDiv.className = 'modal-backdrop hidden';
+      document.body.appendChild(configDiv);
+    }
   }
 
   setupAdminToggleListener() {
@@ -60,6 +68,15 @@ export class AdminPanel {
           this.logout();
         } else {
           this.showAdminLogin();
+        }
+      }
+
+      const scoreSettingsBtn = e.target.closest('#btn-score-settings');
+      if (scoreSettingsBtn) {
+        if (this.isAdmin) {
+          this.showScoreConfigModal();
+        } else {
+          this.showToast('You must be a Super Admin to modify scoring settings.', 'info');
         }
       }
       
@@ -288,9 +305,11 @@ export class AdminPanel {
     const container = document.getElementById('score-modal-container');
     if (!container) return;
 
-    const isGroup = match.stage === 'Group Stage';
-    const targetPoints = isGroup ? 15 : 21;
-    const maxPoints = isGroup ? 21 : 30;
+    const stageConfig = this.state.getScoreConfig(match.category, match.stage);
+    const targetPoints = stageConfig.targetPoints;
+    const maxPoints = stageConfig.maxPoints;
+    const setsToWin = stageConfig.setsToWin;
+    const maxSets = setsToWin * 2 - 1;
 
     const modalTitle = 'Match Score Editor';
     const lblSets = 'Set';
@@ -300,18 +319,29 @@ export class AdminPanel {
     const btnCancel = 'Cancel';
     const btnReset = 'Clear Score';
 
-    const s1_t1 = match.sets[0] ? match.sets[0].t1 : '';
-    const s1_t2 = match.sets[0] ? match.sets[0].t2 : '';
-    const s2_t1 = match.sets[1] ? match.sets[1].t1 : '';
-    const s2_t2 = match.sets[1] ? match.sets[1].t2 : '';
-    const s3_t1 = match.sets[2] ? match.sets[2].t1 : '';
-    const s3_t2 = match.sets[2] ? match.sets[2].t2 : '';
+    let setRowsHtml = '';
+    for (let i = 1; i <= maxSets; i++) {
+      const setVal = match.sets[i - 1] || { t1: '', t2: '' };
+      const isRequired = (i === 1) ? 'required' : '';
+      setRowsHtml += `
+        <!-- Set ${i} -->
+        <div class="score-set-row grid grid-cols-5 gap-3 items-center" id="s${i}-row">
+          <div class="col-span-2">
+            <input type="number" min="0" max="${maxPoints}" id="s${i}-t1" class="form-input score-box text-left" placeholder="0" value="${setVal.t1 !== undefined ? setVal.t1 : ''}" ${isRequired} />
+          </div>
+          <div class="text-center font-bold text-muted">${lblSets} ${i}</div>
+          <div class="col-span-2">
+            <input type="number" min="0" max="${maxPoints}" id="s${i}-t2" class="form-input score-box text-right" placeholder="0" value="${setVal.t2 !== undefined ? setVal.t2 : ''}" ${isRequired} />
+          </div>
+        </div>
+      `;
+    }
 
     container.innerHTML = `
       <div class="modal-card score-editor glass-card">
         <div class="flex items-center justify-between mb-4">
           <h3 class="modal-title m-0">${modalTitle}</h3>
-          <span class="badge ${isGroup ? 'bg-indigo' : 'bg-purple'}">${match.stage} (${targetPoints} pts)</span>
+          <span class="badge bg-purple">${match.stage} (${targetPoints} pts)</span>
         </div>
         
         <div class="score-team-headers grid grid-cols-5 gap-2 mb-2 text-xs font-semibold text-muted text-center">
@@ -327,38 +357,7 @@ export class AdminPanel {
         </div>
 
         <form id="score-form" class="space-y-4">
-          <!-- Set 1 -->
-          <div class="score-set-row grid grid-cols-5 gap-3 items-center">
-            <div class="col-span-2">
-              <input type="number" min="0" max="${maxPoints}" id="s1-t1" class="form-input score-box text-left" placeholder="0" value="${s1_t1}" required />
-            </div>
-            <div class="text-center font-bold text-muted">${lblSets} 1</div>
-            <div class="col-span-2">
-              <input type="number" min="0" max="${maxPoints}" id="s1-t2" class="form-input score-box text-right" placeholder="0" value="${s1_t2}" required />
-            </div>
-          </div>
-
-          <!-- Set 2 -->
-          <div class="score-set-row grid grid-cols-5 gap-3 items-center">
-            <div class="col-span-2">
-              <input type="number" min="0" max="${maxPoints}" id="s2-t1" class="form-input score-box text-left" placeholder="0" value="${s2_t1}" required />
-            </div>
-            <div class="text-center font-bold text-muted">${lblSets} 2</div>
-            <div class="col-span-2">
-              <input type="number" min="0" max="${maxPoints}" id="s2-t2" class="form-input score-box text-right" placeholder="0" value="${s2_t2}" required />
-            </div>
-          </div>
-
-          <!-- Set 3 -->
-          <div class="score-set-row grid grid-cols-5 gap-3 items-center" id="s3-row">
-            <div class="col-span-2">
-              <input type="number" min="0" max="${maxPoints}" id="s3-t1" class="form-input score-box text-left" placeholder="0" value="${s3_t1}" />
-            </div>
-            <div class="text-center font-bold text-muted">${lblSets} 3</div>
-            <div class="col-span-2">
-              <input type="number" min="0" max="${maxPoints}" id="s3-t2" class="form-input score-box text-right" placeholder="0" value="${s3_t2}" />
-            </div>
-          </div>
+          ${setRowsHtml}
 
           <div id="score-error-msg" class="input-error-msg hidden p-2 bg-red-950/40 rounded border border-red-500/30 text-center text-xs"></div>
 
@@ -375,64 +374,94 @@ export class AdminPanel {
 
     container.classList.remove('hidden');
     
-    // Automatically manage Set 3 input requirement based on first 2 sets
-    const s1t1 = document.getElementById('s1-t1');
-    const s1t2 = document.getElementById('s1-t2');
-    const s2t1 = document.getElementById('s2-t1');
-    const s2t2 = document.getElementById('s2-t2');
-    const s3t1 = document.getElementById('s3-t1');
-    const s3t2 = document.getElementById('s3-t2');
-    const s3Row = document.getElementById('s3-row');
+    // Dynamic input visibility controller
+    const inputs = [];
+    for (let i = 1; i <= maxSets; i++) {
+      inputs.push({
+        t1: document.getElementById(`s${i}-t1`),
+        t2: document.getElementById(`s${i}-t2`),
+        row: document.getElementById(`s${i}-row`)
+      });
+    }
 
-    const updateSet3Visibility = () => {
-      const set1Res = this.validateSetScore(Number(s1t1.value), Number(s1t2.value), targetPoints);
-      const set2Res = this.validateSetScore(Number(s2t1.value), Number(s2t2.value), targetPoints);
+    const updateSetVisibility = () => {
+      let t1Won = 0;
+      let t2Won = 0;
       
-      if (set1Res.valid && set2Res.valid) {
-        // If one team won both sets (e.g. 2-0), Set 3 is disabled
-        if (set1Res.winner === set2Res.winner) {
-          s3Row.classList.add('opacity-40');
-          s3t1.disabled = true;
-          s3t2.disabled = true;
-          s3t1.value = '';
-          s3t2.value = '';
-          s3t1.removeAttribute('required');
-          s3t2.removeAttribute('required');
-        } else {
-          // If sets are 1-1, Set 3 is required
-          s3Row.classList.remove('opacity-40');
-          s3t1.disabled = false;
-          s3t2.disabled = false;
-          s3t1.setAttribute('required', 'required');
-          s3t2.setAttribute('required', 'required');
+      for (let i = 1; i <= maxSets; i++) {
+        const row = inputs[i - 1].row;
+        const t1Input = inputs[i - 1].t1;
+        const t2Input = inputs[i - 1].t2;
+        
+        if (i === 1) {
+          t1Input.disabled = false;
+          t2Input.disabled = false;
+          row.classList.remove('opacity-40');
+          t1Input.setAttribute('required', 'required');
+          t2Input.setAttribute('required', 'required');
+          
+          const val1 = Number(t1Input.value);
+          const val2 = Number(t2Input.value);
+          const v = this.validateSetScore(val1, val2, targetPoints, maxPoints);
+          if (v.valid) {
+            if (v.winner === 1) t1Won++; else t2Won++;
+          }
+          continue;
         }
-      } else {
-        s3Row.classList.add('opacity-40');
-        s3t1.disabled = true;
-        s3t2.disabled = true;
-        s3t1.value = '';
-        s3t2.value = '';
-        s3t1.removeAttribute('required');
-        s3t2.removeAttribute('required');
+        
+        const prevWinnerReached = (t1Won === setsToWin || t2Won === setsToWin);
+        let prevSetsFilled = true;
+        for (let idx = 0; idx < i - 1; idx++) {
+          const prevT1 = Number(inputs[idx].t1.value);
+          const prevT2 = Number(inputs[idx].t2.value);
+          if (!this.validateSetScore(prevT1, prevT2, targetPoints, maxPoints).valid) {
+            prevSetsFilled = false;
+            break;
+          }
+        }
+        
+        if (prevSetsFilled && !prevWinnerReached) {
+          row.classList.remove('opacity-40');
+          t1Input.disabled = false;
+          t2Input.disabled = false;
+          t1Input.setAttribute('required', 'required');
+          t2Input.setAttribute('required', 'required');
+          
+          const val1 = Number(t1Input.value);
+          const val2 = Number(t2Input.value);
+          const v = this.validateSetScore(val1, val2, targetPoints, maxPoints);
+          if (v.valid) {
+            if (v.winner === 1) t1Won++; else t2Won++;
+          }
+        } else {
+          row.classList.add('opacity-40');
+          t1Input.disabled = true;
+          t2Input.disabled = true;
+          t1Input.value = '';
+          t2Input.value = '';
+          t1Input.removeAttribute('required');
+          t2Input.removeAttribute('required');
+        }
       }
     };
 
-    [s1t1, s1t2, s2t1, s2t2].forEach(elem => {
-      elem.addEventListener('input', updateSet3Visibility);
+    inputs.forEach(inp => {
+      inp.t1.addEventListener('input', updateSetVisibility);
+      inp.t2.addEventListener('input', updateSetVisibility);
     });
-    updateSet3Visibility();
+    updateSetVisibility();
 
     // Event hooks
     document.getElementById('btn-cancel-score').onclick = () => container.classList.add('hidden');
     document.getElementById('btn-clear-score').onclick = () => this.handleClearScore(matchId);
     document.getElementById('score-form').onsubmit = (e) => {
       e.preventDefault();
-      this.handleSaveScore(match, targetPoints);
+      this.handleSaveScore(match, stageConfig);
     };
   }
 
   // Set-level validation based on BWF Rules
-  validateSetScore(t1, t2, targetPoints) {
+  validateSetScore(t1, t2, targetPoints, maxPoints) {
     if (isNaN(t1) || isNaN(t2)) return { valid: false };
     if (t1 < 0 || t2 < 0) return { valid: false };
     
@@ -441,23 +470,22 @@ export class AdminPanel {
     const diff = maxVal - minVal;
     const winner = t1 > t2 ? 1 : 2;
 
-    // Must reach targetPoints (e.g. 15 or 21)
+    // Must reach targetPoints
     if (maxVal < targetPoints) return { valid: false };
 
-    // Standard win (e.g., 15-13 or less, 21-19 or less)
+    // Standard win
     if (maxVal === targetPoints && diff >= 2) {
       return { valid: true, winner };
     }
 
     // Deuce scenario
-    const capLimit = targetPoints === 15 ? 21 : 30;
     if (maxVal > targetPoints) {
       // Must win by 2 points
-      if (diff === 2 && maxVal < capLimit) {
+      if (diff === 2 && maxVal < maxPoints) {
         return { valid: true, winner };
       }
-      // Reached the max point cap (e.g., 21-20 or 30-29)
-      if (maxVal === capLimit && diff === 1) {
+      // Reached the max point cap
+      if (maxVal === maxPoints && diff === 1) {
         return { valid: true, winner };
       }
     }
@@ -473,54 +501,57 @@ export class AdminPanel {
     }
   }
 
-  handleSaveScore(match, targetPoints) {
-    const s1t1 = Number(document.getElementById('s1-t1').value);
-    const s1t2 = Number(document.getElementById('s1-t2').value);
-    const s2t1 = Number(document.getElementById('s2-t1').value);
-    const s2t2 = Number(document.getElementById('s2-t2').value);
-    const s3t1Input = document.getElementById('s3-t1');
-    const s3t2Input = document.getElementById('s3-t2');
+  handleSaveScore(match, stageConfig) {
+    const targetPoints = stageConfig.targetPoints;
+    const maxPoints = stageConfig.maxPoints;
+    const setsToWin = stageConfig.setsToWin;
+    const maxSets = setsToWin * 2 - 1;
     
     const errorDiv = document.getElementById('score-error-msg');
+    errorDiv.classList.add('hidden');
     
-    // 1. Validate Set 1
-    const v1 = this.validateSetScore(s1t1, s1t2, targetPoints);
-    if (!v1.valid) {
-      this.showInputError(errorDiv, `Set 1 is invalid. Winner must reach ${targetPoints} and lead by 2, or reach cap limit of ${targetPoints === 15 ? 21 : 30} points.`);
-      return;
-    }
-
-    // 2. Validate Set 2
-    const v2 = this.validateSetScore(s2t1, s2t2, targetPoints);
-    if (!v2.valid) {
-      this.showInputError(errorDiv, `Set 2 is invalid. Winner must reach at least ${targetPoints} and lead by 2.`);
-      return;
-    }
-
-    const sets = [
-      { t1: s1t1, t2: s1t2 },
-      { t1: s2t1, t2: s2t2 }
-    ];
-
-    let t1WonSets = (v1.winner === 1 ? 1 : 0) + (v2.winner === 1 ? 1 : 0);
-    let t2WonSets = (v1.winner === 2 ? 1 : 0) + (v2.winner === 2 ? 1 : 0);
-
-    // 3. Process Set 3 if necessary
-    if (t1WonSets === 1 && t2WonSets === 1) {
-      const s3t1 = Number(s3t1Input.value);
-      const s3t2 = Number(s3t2Input.value);
+    const sets = [];
+    let t1WonSets = 0;
+    let t2WonSets = 0;
+    
+    for (let i = 1; i <= maxSets; i++) {
+      const t1Val = document.getElementById(`s${i}-t1`).value;
+      const t2Val = document.getElementById(`s${i}-t2`).value;
       
-      const v3 = this.validateSetScore(s3t1, s3t2, targetPoints);
-      if (!v3.valid) {
-        this.showInputError(errorDiv, `Match is tied 1-1 after 2 sets. You must provide a valid Set 3 score.`);
+      // If we already have a winner, subsequent sets must be empty
+      if (t1WonSets === setsToWin || t2WonSets === setsToWin) {
+        if (t1Val !== '' || t2Val !== '') {
+          this.showInputError(errorDiv, `Set ${i} score should be empty since match has already ended.`);
+          return;
+        }
+        continue;
+      }
+      
+      // Since match has not ended yet, this set is required
+      if (t1Val === '' || t2Val === '') {
+        this.showInputError(errorDiv, `Please fill in Set ${i} score.`);
         return;
       }
       
-      sets.push({ t1: s3t1, t2: s3t2 });
-      if (v3.winner === 1) t1WonSets++;
+      const t1 = Number(t1Val);
+      const t2 = Number(t2Val);
+      
+      const v = this.validateSetScore(t1, t2, targetPoints, maxPoints);
+      if (!v.valid) {
+        this.showInputError(errorDiv, `Set ${i} is invalid. Winner must reach ${targetPoints} and lead by 2, or reach cap limit of ${maxPoints} points.`);
+        return;
+      }
+      
+      sets.push({ t1, t2 });
+      if (v.winner === 1) t1WonSets++;
       else t2WonSets++;
     }
-
+    
+    if (t1WonSets < setsToWin && t2WonSets < setsToWin) {
+      this.showInputError(errorDiv, `No team has won the required ${setsToWin} sets to win the match.`);
+      return;
+    }
+    
     // Update Match state
     const matchWinner = t1WonSets > t2WonSets ? match.team1 : match.team2;
     this.state.updateMatchScore(match.id, sets, t1WonSets, t2WonSets, "Completed");
@@ -554,5 +585,208 @@ export class AdminPanel {
       toast.classList.remove('show');
       setTimeout(() => toast.remove(), 300);
     }, 3000);
+  }
+
+  showScoreConfigModal() {
+    const container = document.getElementById('score-config-modal-container');
+    if (!container) return;
+
+    const categories = ["Men's Doubles", "Mixed's Doubles"];
+    const stages = ["Group Stage", "Semi-finals", "Grand Final", "Bronze Match"];
+    const configs = {};
+    categories.forEach(cat => {
+      configs[cat] = {};
+      stages.forEach(stage => {
+        configs[cat][stage] = this.state.getScoreConfig(cat, stage);
+      });
+    });
+
+    const renderStageFields = (cat) => {
+      return stages.map(stage => {
+        const config = configs[cat][stage];
+        const keyPrefix = cat === "Men's Doubles" ? "md" : "xd";
+        const cardId = stage.replace(/\s+/g, '-').toLowerCase();
+        return `
+          <div class="score-config-stage-card glass-panel p-3.5 rounded-lg border border-slate-700/40 flex flex-col gap-3">
+            <div class="text-2xs font-black text-volt border-b border-slate-800 pb-1.5 flex items-center justify-between">
+              <span>${stage}</span>
+              <span class="badge bg-slate-850 text-slate-400 font-bold" style="font-size: 0.55rem; padding: 2px 6px;">Stage Rules</span>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2">
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.55rem; letter-spacing: 0.02em;">Target Pts</label>
+                <input type="number" min="5" max="50" id="${keyPrefix}-${cardId}-target" class="form-input score-box text-center py-1.5" style="font-size: 1rem;" value="${config.targetPoints}" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.55rem; letter-spacing: 0.02em;">Max Pts</label>
+                <input type="number" min="5" max="60" id="${keyPrefix}-${cardId}-max" class="form-input score-box text-center py-1.5" style="font-size: 1rem;" value="${config.maxPoints}" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.55rem; letter-spacing: 0.02em;">Sets to Win</label>
+                <select id="${keyPrefix}-${cardId}-sets" class="form-input text-center" style="font-weight: bold; background: #0b0f19; font-size: 0.8rem; padding: 0.5rem 0.25rem; height: 42px; cursor: pointer; line-height: 1.5;">
+                  <option value="1" ${config.setsToWin === 1 ? 'selected' : ''}>1 Set</option>
+                  <option value="2" ${config.setsToWin === 2 ? 'selected' : ''}>Best of 3</option>
+                  <option value="3" ${config.setsToWin === 3 ? 'selected' : ''}>Best of 5</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
+    container.innerHTML = `
+      <div class="modal-card score-config-modal glass-card animate-scale-in" style="max-width: 680px; width: 95%;">
+        <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="modal-title m-0 text-glow-volt">⚙️ Match Scoring Settings</h3>
+            <p class="modal-desc m-0">Configure rules for target points, max points, and sets to win per tournament stage.</p>
+          </div>
+          <button class="btn btn-xs btn-neutral" id="btn-close-score-config">✕</button>
+        </div>
+
+        <!-- Category Tabs -->
+        <div class="flex border-b border-slate-800/80 mb-4 justify-center gap-4">
+          <button type="button" class="score-config-tab active font-black pb-2 px-4 text-volt" id="tab-config-md" style="font-size: 0.85rem; border-bottom: 2px solid var(--volt); background: none; border-top: none; border-left: none; border-right: none; cursor: pointer; outline: none; transition: all 0.2s;">💎 Men's Doubles (MD)</button>
+          <button type="button" class="score-config-tab font-black pb-2 px-4 text-slate-500" id="tab-config-xd" style="font-size: 0.85rem; border-bottom: 2px solid transparent; background: none; border-top: none; border-left: none; border-right: none; cursor: pointer; outline: none; transition: all 0.2s;">🔮 Mixed's Doubles (XD)</button>
+        </div>
+
+        <!-- Presets Section -->
+        <div class="mb-5 bg-slate-950/45 p-3 rounded-lg border border-slate-800/80">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-5xs uppercase font-extrabold text-slate-500 tracking-wider">⚡ QUICK SCORE PRESETS</span>
+            <span class="text-[9px] font-black text-slate-400">Applies to the active tab</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn btn-xs btn-outline" id="preset-bwf-standard">🏸 BWF Standard (21pts, Best of 3)</button>
+            <button type="button" class="btn btn-xs btn-outline" id="preset-fast-15">⚡ Short Game (15pts, Best of 3)</button>
+            <button type="button" class="btn btn-xs btn-outline" id="preset-single-set">🎯 Single Set (21pts, 1 Set)</button>
+          </div>
+        </div>
+
+        <form id="score-config-form" class="space-y-4">
+          <!-- MD Section -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[45vh] overflow-y-auto pr-1" id="config-section-md">
+            ${renderStageFields("Men's Doubles")}
+          </div>
+
+          <!-- XD Section -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[45vh] overflow-y-auto pr-1 hidden" id="config-section-xd">
+            ${renderStageFields("Mixed's Doubles")}
+          </div>
+
+          <div id="score-config-error-msg" class="input-error-msg hidden p-2 bg-red-950/40 rounded border border-red-500/30 text-center text-xs"></div>
+
+          <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <button type="button" class="btn btn-neutral" id="btn-cancel-score-config">Cancel</button>
+            <button type="submit" class="btn btn-primary">Apply Settings</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    container.classList.remove('hidden');
+
+    let activeTab = "md"; // "md" or "xd"
+    
+    // Tab switching logic
+    const tabMD = document.getElementById('tab-config-md');
+    const tabXD = document.getElementById('tab-config-xd');
+    const secMD = document.getElementById('config-section-md');
+    const secXD = document.getElementById('config-section-xd');
+
+    tabMD.onclick = () => {
+      activeTab = "md";
+      tabMD.classList.add('text-volt');
+      tabMD.style.borderColor = 'var(--volt)';
+      tabXD.classList.remove('text-volt');
+      tabXD.classList.add('text-slate-500');
+      tabXD.style.borderColor = 'transparent';
+      secMD.classList.remove('hidden');
+      secXD.classList.add('hidden');
+    };
+
+    tabXD.onclick = () => {
+      activeTab = "xd";
+      tabXD.classList.add('text-volt');
+      tabXD.style.borderColor = 'var(--volt)';
+      tabMD.classList.remove('text-volt');
+      tabMD.classList.add('text-slate-500');
+      tabMD.style.borderColor = 'transparent';
+      secXD.classList.remove('hidden');
+      secMD.classList.add('hidden');
+    };
+
+    // Preset listeners
+    const applyPreset = (presetRules) => {
+      const prefix = activeTab;
+      stages.forEach(stage => {
+        const cardId = stage.replace(/\s+/g, '-').toLowerCase();
+        const rule = presetRules[stage] || presetRules.default;
+        document.getElementById(`${prefix}-${cardId}-target`).value = rule.targetPoints;
+        document.getElementById(`${prefix}-${cardId}-max`).value = rule.maxPoints;
+        document.getElementById(`${prefix}-${cardId}-sets`).value = rule.setsToWin;
+      });
+    };
+
+    document.getElementById('preset-bwf-standard').onclick = () => {
+      applyPreset({
+        default: { targetPoints: 21, maxPoints: 30, setsToWin: 2 }
+      });
+      this.showToast(`Standard BWF presets filled for ${activeTab === 'md' ? "Men's Doubles" : "Mixed's Doubles"}!`, 'info');
+    };
+
+    document.getElementById('preset-fast-15').onclick = () => {
+      applyPreset({
+        default: { targetPoints: 15, maxPoints: 21, setsToWin: 2 }
+      });
+      this.showToast(`Short Game presets filled for ${activeTab === 'md' ? "Men's Doubles" : "Mixed's Doubles"}!`, 'info');
+    };
+
+    document.getElementById('preset-single-set').onclick = () => {
+      applyPreset({
+        default: { targetPoints: 21, maxPoints: 30, setsToWin: 1 }
+      });
+      this.showToast(`Single Set presets filled for ${activeTab === 'md' ? "Men's Doubles" : "Mixed's Doubles"}!`, 'info');
+    };
+
+    // Close buttons
+    const closeBtn = document.getElementById('btn-close-score-config');
+    const cancelBtn = document.getElementById('btn-cancel-score-config');
+    const closeForm = () => container.classList.add('hidden');
+    closeBtn.onclick = closeForm;
+    cancelBtn.onclick = closeForm;
+
+    // Form submit
+    document.getElementById('score-config-form').onsubmit = (e) => {
+      e.preventDefault();
+      
+      const errorDiv = document.getElementById('score-config-error-msg');
+      errorDiv.classList.add('hidden');
+
+      // Validation and update
+      for (const cat of categories) {
+        const keyPrefix = cat === "Men's Doubles" ? "md" : "xd";
+        for (const stage of stages) {
+          const cardId = stage.replace(/\s+/g, '-').toLowerCase();
+          const target = Number(document.getElementById(`${keyPrefix}-${cardId}-target`).value);
+          const max = Number(document.getElementById(`${keyPrefix}-${cardId}-max`).value);
+          const sets = Number(document.getElementById(`${keyPrefix}-${cardId}-sets`).value);
+
+          if (max < target) {
+            errorDiv.textContent = `Max points cannot be less than target points in ${cat} - ${stage}.`;
+            errorDiv.classList.remove('hidden');
+            return;
+          }
+
+          this.state.updateScoreConfig(cat, stage, { targetPoints: target, maxPoints: max, setsToWin: sets });
+        }
+      }
+
+      container.classList.add('hidden');
+      this.showToast('Match scoring settings updated successfully!', 'success');
+      this.onUpdate();
+    };
   }
 }

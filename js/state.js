@@ -5,6 +5,7 @@ export class TournamentState {
     this.players = [];
     this.teams = [];
     this.matches = [];
+    this.scoreConfig = {};
     this.listeners = [];
     this.init();
   }
@@ -13,10 +14,48 @@ export class TournamentState {
     const savedPlayers = localStorage.getItem('badminton_players');
     const savedTeams = localStorage.getItem('badminton_teams');
     const savedMatches = localStorage.getItem('badminton_matches');
+    const savedScoreConfig = localStorage.getItem('badminton_scoreConfig');
 
     this.players = savedPlayers ? JSON.parse(savedPlayers) : [...INITIAL_PLAYERS];
     this.teams = savedTeams ? JSON.parse(savedTeams) : [...INITIAL_TEAMS];
     this.matches = savedMatches ? JSON.parse(savedMatches) : [...INITIAL_MATCHES];
+
+    const defaultScoreConfig = {
+      "Men's Doubles": {
+        "Group Stage": { targetPoints: 15, maxPoints: 21, setsToWin: 2 },
+        "Semi-finals": { targetPoints: 21, maxPoints: 30, setsToWin: 2 },
+        "Grand Final": { targetPoints: 21, maxPoints: 30, setsToWin: 2 },
+        "Bronze Match": { targetPoints: 21, maxPoints: 30, setsToWin: 2 }
+      },
+      "Mixed's Doubles": {
+        "Group Stage": { targetPoints: 15, maxPoints: 21, setsToWin: 2 },
+        "Semi-finals": { targetPoints: 21, maxPoints: 30, setsToWin: 2 },
+        "Grand Final": { targetPoints: 21, maxPoints: 30, setsToWin: 2 },
+        "Bronze Match": { targetPoints: 21, maxPoints: 30, setsToWin: 2 }
+      }
+    };
+
+    let parsed = null;
+    if (savedScoreConfig) {
+      try {
+        parsed = JSON.parse(savedScoreConfig);
+      } catch (e) {
+        parsed = null;
+      }
+    }
+
+    if (parsed) {
+      if (parsed["Group Stage"] && !parsed["Men's Doubles"]) {
+        this.scoreConfig = {
+          "Men's Doubles": JSON.parse(JSON.stringify(parsed)),
+          "Mixed's Doubles": JSON.parse(JSON.stringify(parsed))
+        };
+      } else {
+        this.scoreConfig = parsed;
+      }
+    } else {
+      this.scoreConfig = defaultScoreConfig;
+    }
 
     this.propagateKnockoutTeams();
     this.saveToStorage();
@@ -26,16 +65,61 @@ export class TournamentState {
     localStorage.setItem('badminton_players', JSON.stringify(this.players));
     localStorage.setItem('badminton_teams', JSON.stringify(this.teams));
     localStorage.setItem('badminton_matches', JSON.stringify(this.matches));
+    localStorage.setItem('badminton_scoreConfig', JSON.stringify(this.scoreConfig));
   }
 
   resetToDefault() {
     localStorage.removeItem('badminton_players');
     localStorage.removeItem('badminton_teams');
     localStorage.removeItem('badminton_matches');
+    localStorage.removeItem('badminton_scoreConfig');
     this.players = [...INITIAL_PLAYERS];
     this.teams = [...INITIAL_TEAMS];
     this.matches = [...INITIAL_MATCHES];
+    this.scoreConfig = {
+      "Men's Doubles": {
+        "Group Stage": { targetPoints: 15, maxPoints: 21, setsToWin: 2 },
+        "Semi-finals": { targetPoints: 21, maxPoints: 30, setsToWin: 2 },
+        "Grand Final": { targetPoints: 21, maxPoints: 30, setsToWin: 2 },
+        "Bronze Match": { targetPoints: 21, maxPoints: 30, setsToWin: 2 }
+      },
+      "Mixed's Doubles": {
+        "Group Stage": { targetPoints: 15, maxPoints: 21, setsToWin: 2 },
+        "Semi-finals": { targetPoints: 21, maxPoints: 30, setsToWin: 2 },
+        "Grand Final": { targetPoints: 21, maxPoints: 30, setsToWin: 2 },
+        "Bronze Match": { targetPoints: 21, maxPoints: 30, setsToWin: 2 }
+      }
+    };
     this.propagateKnockoutTeams();
+    this.saveToStorage();
+    this.notifyListeners();
+  }
+
+  getScoreConfig(category, stage) {
+    let cat = category;
+    let stg = stage;
+    if (!stage) {
+      stg = category;
+      cat = "Men's Doubles";
+    }
+    if (this.scoreConfig[cat] && this.scoreConfig[cat][stg]) {
+      return this.scoreConfig[cat][stg];
+    }
+    if (this.scoreConfig[stg]) {
+      return this.scoreConfig[stg];
+    }
+    return { targetPoints: 21, maxPoints: 30, setsToWin: 2 };
+  }
+
+  updateScoreConfig(category, stage, config) {
+    if (!this.scoreConfig[category]) {
+      this.scoreConfig[category] = {};
+    }
+    this.scoreConfig[category][stage] = {
+      targetPoints: Number(config.targetPoints),
+      maxPoints: Number(config.maxPoints),
+      setsToWin: Number(config.setsToWin)
+    };
     this.saveToStorage();
     this.notifyListeners();
   }

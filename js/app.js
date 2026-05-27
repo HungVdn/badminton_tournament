@@ -325,6 +325,7 @@ class BadmintonApp {
     if (adminBtn) {
       // Find or create welcome span
       let welcomeSpan = document.getElementById('navbar-welcome-user');
+      let scoreSettingsBtn = document.getElementById('btn-score-settings');
       const isLoggedIn = this.admin.isAdmin || this.admin.isRef;
       
       if (isLoggedIn) {
@@ -339,6 +340,20 @@ class BadmintonApp {
         welcomeSpan.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-volt pulse-dot"></span> Welcome, <span class="text-volt font-black">${label}</span>`;
         welcomeSpan.classList.remove('hidden');
 
+        // Render Score Settings Button for Super Admin
+        if (this.admin.isAdmin) {
+          if (!scoreSettingsBtn) {
+            scoreSettingsBtn = document.createElement('button');
+            scoreSettingsBtn.id = 'btn-score-settings';
+            scoreSettingsBtn.className = 'btn btn-xs btn-outline btn-volt flex items-center gap-1 mr-1';
+            scoreSettingsBtn.innerHTML = `⚙️ <span>Score Settings</span>`;
+            adminBtn.parentNode.insertBefore(scoreSettingsBtn, adminBtn);
+          }
+          scoreSettingsBtn.classList.remove('hidden');
+        } else {
+          if (scoreSettingsBtn) scoreSettingsBtn.classList.add('hidden');
+        }
+
         adminBtn.innerHTML = `✕ <span>Logout</span>`;
         adminBtn.className = 'btn btn-xs btn-danger font-bold flex items-center gap-1';
         
@@ -347,6 +362,9 @@ class BadmintonApp {
         if (welcomeSpan) {
           welcomeSpan.classList.add('hidden');
           welcomeSpan.innerHTML = '';
+        }
+        if (scoreSettingsBtn) {
+          scoreSettingsBtn.classList.add('hidden');
         }
         adminBtn.innerHTML = `🔐 <span>Admin Login</span>`;
         adminBtn.className = 'btn btn-xs btn-outline flex items-center gap-1';
@@ -940,12 +958,15 @@ class BadmintonApp {
 
       const winnerColorClass = isMD ? 'text-volt' : 'text-cyan';
 
-      let t1ScoresHtml = '';
-      let t2ScoresHtml = '';
+      const stageConfig = this.state.getScoreConfig(match.category, match.stage);
+      const maxSets = stageConfig.setsToWin * 2 - 1;
       
       const renderSets = isCompleted ? match.sets : (isLive ? liveData.sets : []);
       const displayScore1 = isCompleted ? match.score1 : (isLive ? liveData.score1 : '-');
       const displayScore2 = isCompleted ? match.score2 : (isLive ? liveData.score2 : '-');
+
+      let t1ScoresHtml = '';
+      let t2ScoresHtml = '';
 
       if ((isCompleted || isLive) && renderSets && renderSets.length > 0) {
         const dot1 = isCompleted && match.winner === match.team1 ? `<span class="${winnerColorClass}" style="font-size: 0.55rem; width: 8px;">●</span>` : '<span style="width: 8px;"></span>';
@@ -959,15 +980,19 @@ class BadmintonApp {
           t2ScoresHtml += `<span class="${s.t2 > s.t1 ? winnerColorClass : 'text-slate-400'}" style="width: 22px; display: inline-block; text-align: center;">${s.t2}</span>`;
         });
         
-        // Pad to 3 sets to keep visual alignment consistent
-        for (let i = renderSets.length; i < 3; i++) {
+        // Pad to maxSets to keep visual alignment consistent
+        for (let i = renderSets.length; i < maxSets; i++) {
           t1ScoresHtml += '<span class="text-slate-700" style="width: 22px; display: inline-block; text-align: center;">-</span>';
           t2ScoresHtml += '<span class="text-slate-700" style="width: 22px; display: inline-block; text-align: center;">-</span>';
         }
       } else {
         // Scheduled
-        t1ScoresHtml = '<span style="width: 8px;"></span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span>';
-        t2ScoresHtml = '<span style="width: 8px;"></span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span>';
+        t1ScoresHtml = '<span style="width: 8px;"></span>';
+        t2ScoresHtml = '<span style="width: 8px;"></span>';
+        for (let i = 0; i < maxSets; i++) {
+          t1ScoresHtml += '<span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span>';
+          t2ScoresHtml += '<span class="text-slate-600" style="width: 22px; display: inline-block; text-align: center;">-</span>';
+        }
       }
 
       // Actions Footer
@@ -1039,7 +1064,7 @@ class BadmintonApp {
                 </span>
                 <span class="text-4xs text-slate-500 font-normal mt-0.5 truncate" title="${team1Players || 'TBD'}">${team1Players || 'TBD'}</span>
               </div>
-              <div class="flex items-center justify-end font-mono text-2xs font-extrabold" style="width: 100px; gap: 0.5rem; flex-shrink: 0;">
+              <div class="flex items-center justify-end font-mono text-2xs font-extrabold" style="width: ${maxSets * 22 + 12}px; gap: 0.5rem; flex-shrink: 0;">
                 ${t1ScoresHtml}
               </div>
             </div>
@@ -1052,7 +1077,7 @@ class BadmintonApp {
                 </span>
                 <span class="text-4xs text-slate-500 font-normal mt-0.5 truncate" title="${team2Players || 'TBD'}">${team2Players || 'TBD'}</span>
               </div>
-              <div class="flex items-center justify-end font-mono text-2xs font-extrabold" style="width: 100px; gap: 0.5rem; flex-shrink: 0;">
+              <div class="flex items-center justify-end font-mono text-2xs font-extrabold" style="width: ${maxSets * 22 + 12}px; gap: 0.5rem; flex-shrink: 0;">
                 ${t2ScoresHtml}
               </div>
             </div>
@@ -1132,6 +1157,9 @@ class BadmintonApp {
         const team1Players = team1Obj ? `${team1Obj.player1} & ${team1Obj.player2}` : '';
         const team2Players = team2Obj ? `${team2Obj.player1} & ${team2Obj.player2}` : '';
 
+        const nodeStageConfig = this.state.getScoreConfig(match.category, match.stage);
+        const nodeMaxSets = nodeStageConfig.setsToWin * 2 - 1;
+
         // BWF scores helper for compact bracket node
         const winnerColorClass = isVolt ? 'text-volt' : 'text-cyan';
         let t1ScoresHtml = '';
@@ -1148,15 +1176,19 @@ class BadmintonApp {
             t2ScoresHtml += `<span class="${s.t2 > s.t1 ? winnerColorClass : 'text-slate-400'}" style="width: 16px; display: inline-block; text-align: center;">${s.t2}</span>`;
           });
           
-          // Pad to 3 sets
-          for (let i = match.sets.length; i < 3; i++) {
+          // Pad to nodeMaxSets
+          for (let i = match.sets.length; i < nodeMaxSets; i++) {
             t1ScoresHtml += '<span class="text-slate-700" style="width: 16px; display: inline-block; text-align: center;">-</span>';
             t2ScoresHtml += '<span class="text-slate-700" style="width: 16px; display: inline-block; text-align: center;">-</span>';
           }
         } else {
           // Scheduled
-          t1ScoresHtml = '<span style="width: 6px;"></span><span class="text-slate-600" style="width: 16px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 16px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 16px; display: inline-block; text-align: center;">-</span>';
-          t2ScoresHtml = '<span style="width: 8px;"></span><span class="text-slate-600" style="width: 16px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 16px; display: inline-block; text-align: center;">-</span><span class="text-slate-600" style="width: 16px; display: inline-block; text-align: center;">-</span>';
+          t1ScoresHtml = '<span style="width: 6px;"></span>';
+          t2ScoresHtml = '<span style="width: 8px;"></span>';
+          for (let i = 0; i < nodeMaxSets; i++) {
+            t1ScoresHtml += '<span class="text-slate-600" style="width: 16px; display: inline-block; text-align: center;">-</span>';
+            t2ScoresHtml += '<span class="text-slate-600" style="width: 16px; display: inline-block; text-align: center;">-</span>';
+          }
         }
 
         const footerHtml = isComp 
@@ -1177,7 +1209,7 @@ class BadmintonApp {
                   <span class="truncate" title="${match.team1}">${match.team1}</span>
                   <span class="text-5xs text-slate-500 font-normal mt-0.5 truncate" style="max-w-[85px];" title="${team1Players || 'TBD'}">${team1Players || 'TBD'}</span>
                 </div>
-                <div class="flex items-center justify-end font-mono text-4xs font-bold" style="width: 70px; gap: 0.35rem; flex-shrink: 0;">
+                <div class="flex items-center justify-end font-mono text-4xs font-bold" style="width: ${nodeMaxSets * 16 + 10}px; gap: 0.35rem; flex-shrink: 0;">
                   ${t1ScoresHtml}
                 </div>
               </div>
@@ -1188,7 +1220,7 @@ class BadmintonApp {
                   <span class="truncate" title="${match.team2}">${match.team2}</span>
                   <span class="text-5xs text-slate-500 font-normal mt-0.5 truncate" style="max-w-[85px];" title="${team2Players || 'TBD'}">${team2Players || 'TBD'}</span>
                 </div>
-                <div class="flex items-center justify-end font-mono text-4xs font-bold" style="width: 70px; gap: 0.35rem; flex-shrink: 0;">
+                <div class="flex items-center justify-end font-mono text-4xs font-bold" style="width: ${nodeMaxSets * 16 + 10}px; gap: 0.35rem; flex-shrink: 0;">
                   ${t2ScoresHtml}
                 </div>
               </div>
