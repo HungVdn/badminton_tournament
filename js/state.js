@@ -75,7 +75,14 @@ export class TournamentState {
     localStorage.removeItem('badminton_scoreConfig');
     this.players = [...INITIAL_PLAYERS];
     this.teams = [...INITIAL_TEAMS];
-    this.matches = [...INITIAL_MATCHES];
+    this.matches = INITIAL_MATCHES.map(m => ({
+      ...m,
+      status: 'Scheduled',
+      score1: '',
+      score2: '',
+      sets: [],
+      winner: ''
+    }));
     this.scoreConfig = {
       "Men's Doubles": {
         "Group Stage": { targetPoints: 15, maxPoints: 21, setsToWin: 2 },
