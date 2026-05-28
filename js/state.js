@@ -1,4 +1,6 @@
 import { INITIAL_PLAYERS, INITIAL_TEAMS, INITIAL_MATCHES } from './data.js';
+import { db } from './firebase.js';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export class TournamentState {
   constructor() {
@@ -58,14 +60,74 @@ export class TournamentState {
     }
 
     this.propagateKnockoutTeams();
-    this.saveToStorage();
+    this.saveToStorageLocal();
+
+    // Set up real-time Firebase syncing if configured
+    if (db) {
+      try {
+        onSnapshot(doc(db, "badminton", "state"), (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (data) {
+              let changed = false;
+              if (data.matches && JSON.stringify(this.matches) !== JSON.stringify(data.matches)) {
+                this.matches = data.matches;
+                changed = true;
+              }
+              if (data.scoreConfig && JSON.stringify(this.scoreConfig) !== JSON.stringify(data.scoreConfig)) {
+                this.scoreConfig = data.scoreConfig;
+                changed = true;
+              }
+              if (data.players && JSON.stringify(this.players) !== JSON.stringify(data.players)) {
+                this.players = data.players;
+                changed = true;
+              }
+              if (data.teams && JSON.stringify(this.teams) !== JSON.stringify(data.teams)) {
+                this.teams = data.teams;
+                changed = true;
+              }
+              if (changed) {
+                this.propagateKnockoutTeams();
+                this.saveToStorageLocal();
+                this.notifyListeners();
+              }
+            }
+          } else {
+            // First run: Upload current local state to Firestore as initial value
+            this.saveToFirestore();
+          }
+        });
+      } catch (e) {
+        console.error("Failed to establish real-time Firestore sync listener:", e);
+      }
+    }
   }
 
-  saveToStorage() {
+  saveToStorageLocal() {
     localStorage.setItem('badminton_players', JSON.stringify(this.players));
     localStorage.setItem('badminton_teams', JSON.stringify(this.teams));
     localStorage.setItem('badminton_matches', JSON.stringify(this.matches));
     localStorage.setItem('badminton_scoreConfig', JSON.stringify(this.scoreConfig));
+  }
+
+  saveToStorage() {
+    this.saveToStorageLocal();
+    this.saveToFirestore();
+  }
+
+  saveToFirestore() {
+    if (!db) return;
+    try {
+      setDoc(doc(db, "badminton", "state"), {
+        players: this.players,
+        teams: this.teams,
+        matches: this.matches,
+        scoreConfig: this.scoreConfig,
+        updatedAt: Date.now()
+      });
+    } catch (e) {
+      console.error("Failed to write state to Firestore:", e);
+    }
   }
 
   resetToDefault() {
