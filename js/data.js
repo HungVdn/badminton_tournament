@@ -31,7 +31,6 @@ export const INITIAL_TEAMS = [
 ];
 
 export const INITIAL_MATCHES = [
-  // Men's Doubles
   {
     "id": "M-1",
     "category": "Men's Doubles",
@@ -40,11 +39,10 @@ export const INITIAL_MATCHES = [
     "time": "1:30 - 2:00",
     "team1": "Hưng 7 - Khải",
     "team2": "Hưng 14 - Phong",
-    "score1": 2,
-    "score2": 1,
-    "sets": [{ "t1": 15, "t2": 11 }, { "t1": 9, "t2": 15 }, { "t1": 15, "t2": 13 }],
-    "status": "Completed",
-    "winner": "Hưng 7 - Khải"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-2",
@@ -54,11 +52,10 @@ export const INITIAL_MATCHES = [
     "time": "1:30 - 2:00",
     "team1": "Tùng - Dương",
     "team2": "Tiến - Minh",
-    "score1": 2,
-    "score2": 0,
-    "sets": [{ "t1": 15, "t2": 12 }, { "t1": 15, "t2": 10 }],
-    "status": "Completed",
-    "winner": "Tùng - Dương"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-5",
@@ -68,11 +65,10 @@ export const INITIAL_MATCHES = [
     "time": "2:05 - 2:35",
     "team1": "Tùng - Dương",
     "team2": "Hưng 7 - Khải",
-    "score1": 2,
-    "score2": 0,
-    "sets": [{ "t1": 15, "t2": 13 }, { "t1": 15, "t2": 11 }],
-    "status": "Completed",
-    "winner": "Tùng - Dương"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-6",
@@ -82,11 +78,10 @@ export const INITIAL_MATCHES = [
     "time": "2:05 - 2:35",
     "team1": "Hưng 14 - Phong",
     "team2": "Phước - Hiếu",
-    "score1": 2,
-    "score2": 0,
-    "sets": [{ "t1": 15, "t2": 9 }, { "t1": 15, "t2": 7 }],
-    "status": "Completed",
-    "winner": "Hưng 14 - Phong"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-9",
@@ -96,11 +91,10 @@ export const INITIAL_MATCHES = [
     "time": "2:40 - 3:10",
     "team1": "Hưng 7 - Khải",
     "team2": "Tiến - Minh",
-    "score1": 2,
-    "score2": 0,
-    "sets": [{ "t1": 15, "t2": 13 }, { "t1": 15, "t2": 12 }],
-    "status": "Completed",
-    "winner": "Hưng 7 - Khải"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-10",
@@ -110,11 +104,10 @@ export const INITIAL_MATCHES = [
     "time": "2:40 - 3:10",
     "team1": "Tùng - Dương",
     "team2": "Phước - Hiếu",
-    "score1": 2,
-    "score2": 0,
-    "sets": [{ "t1": 15, "t2": 8 }, { "t1": 15, "t2": 11 }],
-    "status": "Completed",
-    "winner": "Tùng - Dương"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-13",
@@ -124,11 +117,10 @@ export const INITIAL_MATCHES = [
     "time": "3:15 - 3:45",
     "team1": "Phước - Hiếu",
     "team2": "Hưng 7 - Khải",
-    "score1": 0,
-    "score2": 2,
-    "sets": [{ "t1": 11, "t2": 15 }, { "t1": 10, "t2": 15 }],
-    "status": "Completed",
-    "winner": "Hưng 7 - Khải"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-14",
@@ -138,11 +130,10 @@ export const INITIAL_MATCHES = [
     "time": "3:15 - 3:45",
     "team1": "Hưng 14 - Phong",
     "team2": "Tiến - Minh",
-    "score1": 2,
-    "score2": 0,
-    "sets": [{ "t1": 15, "t2": 13 }, { "t1": 15, "t2": 10 }],
-    "status": "Completed",
-    "winner": "Hưng 14 - Phong"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-17",
@@ -170,8 +161,6 @@ export const INITIAL_MATCHES = [
     "sets": [],
     "status": "Scheduled"
   },
-
-  // Mixed's Doubles
   {
     "id": "M-3",
     "category": "Mixed's Doubles",
@@ -180,11 +169,10 @@ export const INITIAL_MATCHES = [
     "time": "1:30 - 2:00",
     "team1": "Hằng - Minh",
     "team2": "Minh - Triêm",
-    "score1": 2,
-    "score2": 0,
-    "sets": [{ "t1": 15, "t2": 8 }, { "t1": 15, "t2": 13 }],
-    "status": "Completed",
-    "winner": "Hằng - Minh"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-4",
@@ -194,11 +182,10 @@ export const INITIAL_MATCHES = [
     "time": "1:30 - 2:00",
     "team1": "Trân - Long",
     "team2": "Thanh - Hoàn",
-    "score1": 2,
-    "score2": 1,
-    "sets": [{ "t1": 12, "t2": 15 }, { "t1": 15, "t2": 13 }, { "t1": 16, "t2": 14 }],
-    "status": "Completed",
-    "winner": "Trân - Long"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-7",
@@ -208,11 +195,10 @@ export const INITIAL_MATCHES = [
     "time": "2:05 - 2:35",
     "team1": "Trân - Long",
     "team2": "Hằng - Minh",
-    "score1": 0,
-    "score2": 2,
-    "sets": [{ "t1": 11, "t2": 15 }, { "t1": 11, "t2": 15 }],
-    "status": "Completed",
-    "winner": "Hằng - Minh"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-8",
@@ -222,11 +208,10 @@ export const INITIAL_MATCHES = [
     "time": "2:05 - 2:35",
     "team1": "Minh - Triêm",
     "team2": "Chi - Quân",
-    "score1": 2,
-    "score2": 1,
-    "sets": [{ "t1": 15, "t2": 13 }, { "t1": 10, "t2": 15 }, { "t1": 15, "t2": 11 }],
-    "status": "Completed",
-    "winner": "Minh - Triêm"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-11",
@@ -236,11 +221,10 @@ export const INITIAL_MATCHES = [
     "time": "2:40 - 3:10",
     "team1": "Thanh - Hoàn",
     "team2": "Hằng - Minh",
-    "score1": 0,
-    "score2": 2,
-    "sets": [{ "t1": 9, "t2": 15 }, { "t1": 8, "t2": 15 }],
-    "status": "Completed",
-    "winner": "Hằng - Minh"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-12",
@@ -250,11 +234,10 @@ export const INITIAL_MATCHES = [
     "time": "2:40 - 3:10",
     "team1": "Trân - Long",
     "team2": "Chi - Quân",
-    "score1": 2,
-    "score2": 0,
-    "sets": [{ "t1": 15, "t2": 10 }, { "t1": 15, "t2": 12 }],
-    "status": "Completed",
-    "winner": "Trân - Long"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-15",
@@ -264,11 +247,10 @@ export const INITIAL_MATCHES = [
     "time": "3:15 - 3:45",
     "team1": "Hằng - Minh",
     "team2": "Chi - Quân",
-    "score1": 2,
-    "score2": 0,
-    "sets": [{ "t1": 15, "t2": 11 }, { "t1": 15, "t2": 9 }],
-    "status": "Completed",
-    "winner": "Hằng - Minh"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-16",
@@ -278,11 +260,10 @@ export const INITIAL_MATCHES = [
     "time": "3:15 - 3:45",
     "team1": "Minh - Triêm",
     "team2": "Thanh - Hoàn",
-    "score1": 2,
-    "score2": 0,
-    "sets": [{ "t1": 15, "t2": 12 }, { "t1": 15, "t2": 13 }],
-    "status": "Completed",
-    "winner": "Minh - Triêm"
+    "score1": "",
+    "score2": "",
+    "sets": [],
+    "status": "Scheduled"
   },
   {
     "id": "M-19",
