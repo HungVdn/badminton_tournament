@@ -1,9 +1,4 @@
-import { db } from './firebase.js';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-
-// js/sync.js
-// Synchronization Engine using the browser's native BroadcastChannel API
-// Enables zero-latency, real-time updates across multiple open browser tabs/devices.
+import { FirebaseService } from './firebase-service.js';
 
 export class TournamentSync {
   constructor(state, onRemoteUpdateCallback) {
@@ -11,8 +6,6 @@ export class TournamentSync {
     this.onRemoteUpdate = onRemoteUpdateCallback;
     this.channelName = 'badminton_live_sync';
     this.channel = null;
-    this.senderId = Math.random().toString(36).substring(2);
-    this.lastRemoteTimestamp = 0;
     
     this.init();
   }
@@ -37,23 +30,64 @@ export class TournamentSync {
       });
     }
 
-    // Connect to Firebase real-time synchronization if database is configured
-    if (db) {
+    // Set up Firebase Realtime Database sync for live matches
+    if (FirebaseService.isAvailable()) {
       try {
-        onSnapshot(doc(db, "badminton", "liveSync"), (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.data();
-            if (data && data.timestamp > this.lastRemoteTimestamp) {
-              this.lastRemoteTimestamp = data.timestamp;
-              // Skip updates originated from this specific tab (already handled locally)
-              if (data.senderId !== this.senderId) {
-                this.handleMessage(data.message);
+        FirebaseService.onAllLiveMatchesChange((remoteLiveMatches) => {
+          const localLiveMatches = this.getLiveMatches();
+          let hasChanges = false;
+
+          // Check for new or updated matches from Firebase
+          for (const matchId in remoteLiveMatches) {
+            const remoteMatch = remoteLiveMatches[matchId];
+            const localMatch = localLiveMatches[matchId];
+
+            if (!localMatch || JSON.stringify(localMatch) !== JSON.stringify(remoteMatch)) {
+              localLiveMatches[matchId] = remoteMatch;
+              hasChanges = true;
+
+              // Also update the local state.js match status to 'Live' and set scores
+              const match = this.state.matches.find(m => m.id === matchId);
+              if (match) {
+                match.sets = remoteMatch.sets || [];
+                match.score1 = remoteMatch.score1 !== undefined ? remoteMatch.score1 : '';
+                match.score2 = remoteMatch.score2 !== undefined ? remoteMatch.score2 : '';
+                match.status = 'Live';
               }
+
+              if (this.onRemoteUpdate) {
+                this.onRemoteUpdate('SCORE_UPDATE', remoteMatch);
+              }
+            }
+          }
+
+          // Check for deleted live matches (ended)
+          for (const matchId in localLiveMatches) {
+            if (!remoteLiveMatches || !remoteLiveMatches[matchId]) {
+              delete localLiveMatches[matchId];
+              hasChanges = true;
+
+              // Update state match status
+              const match = this.state.matches.find(m => m.id === matchId);
+              if (match && match.status === 'Live') {
+                match.status = 'Scheduled';
+              }
+
+              if (this.onRemoteUpdate) {
+                this.onRemoteUpdate('STATUS_UPDATE', { matchId, isLive: false });
+              }
+            }
+          }
+
+          if (hasChanges) {
+            this.saveLiveMatches(localLiveMatches);
+            if (this.onRemoteUpdate) {
+              this.onRemoteUpdate('LIVE_SYNC_RELOAD', {});
             }
           }
         });
       } catch (e) {
-        console.error("Failed to connect liveSync to Firestore:", e);
+        console.error("❌ Failed to connect live sync listener to Firebase:", e);
       }
     }
   }
@@ -69,7 +103,7 @@ export class TournamentSync {
     localStorage.setItem('badminton_live_matches', JSON.stringify(liveMatches));
   }
 
-  // Broadcast a message to other tabs and Firestore
+  // Broadcast a message to other tabs and Firebase
   broadcast(type, payload) {
     const message = { type, payload, timestamp: Date.now() };
     
@@ -81,16 +115,24 @@ export class TournamentSync {
     // Fallback: Trigger a storage event by updating local storage
     localStorage.setItem('badminton_live_sync_fallback', JSON.stringify(message));
 
-    // Publish live update to Firestore
-    if (db) {
-      try {
-        setDoc(doc(db, "badminton", "liveSync"), {
-          senderId: this.senderId,
-          timestamp: Date.now(),
-          message: message
+    // Also push to Firebase Realtime Database
+    if (FirebaseService.isAvailable()) {
+      if (type === 'LIVE_MATCH_START') {
+        const liveMatchData = {
+          matchId: payload.matchId,
+          isLive: true,
+          updatedAt: Date.now(),
+          ...(payload.matchState || {})
+        };
+        FirebaseService.saveLiveMatch(payload.matchId, liveMatchData);
+      } else if (type === 'LIVE_SCORE_UPDATE') {
+        FirebaseService.saveLiveMatch(payload.matchId, {
+          ...payload,
+          isLive: true,
+          updatedAt: Date.now()
         });
-      } catch (e) {
-        console.error("Failed to broadcast live update to Firestore:", e);
+      } else if (type === 'LIVE_MATCH_END') {
+        FirebaseService.removeLiveMatch(payload.matchId);
       }
     }
   }
@@ -124,8 +166,16 @@ export class TournamentSync {
         updatedAt: Date.now(),
         ...(matchState || {})
       };
+      
+      if (FirebaseService.isAvailable()) {
+        FirebaseService.saveLiveMatch(matchId, liveMatches[matchId]);
+      }
     } else {
       delete liveMatches[matchId];
+      
+      if (FirebaseService.isAvailable()) {
+        FirebaseService.removeLiveMatch(matchId);
+      }
     }
     this.saveLiveMatches(liveMatches);
     
@@ -164,6 +214,10 @@ export class TournamentSync {
       team2Left
     };
     this.saveLiveMatches(liveMatches);
+
+    if (FirebaseService.isAvailable()) {
+      FirebaseService.saveLiveMatch(matchId, liveMatches[matchId]);
+    }
 
     // Update match state in local array without saving as completed
     const match = this.state.matches.find(m => m.id === matchId);

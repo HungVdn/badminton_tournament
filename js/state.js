@@ -1,6 +1,5 @@
 import { INITIAL_PLAYERS, INITIAL_TEAMS, INITIAL_MATCHES } from './data.js';
-import { db } from './firebase.js';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { FirebaseService } from './firebase-service.js';
 
 export class TournamentState {
   constructor() {
@@ -62,43 +61,40 @@ export class TournamentState {
     this.propagateKnockoutTeams();
     this.saveToStorageLocal();
 
-    // Set up real-time Firebase syncing if configured
-    if (db) {
+    // Set up real-time Firebase syncing
+    if (FirebaseService.isAvailable()) {
       try {
-        onSnapshot(doc(db, "badminton", "state"), (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.data();
-            if (data) {
-              let changed = false;
-              if (data.matches && JSON.stringify(this.matches) !== JSON.stringify(data.matches)) {
-                this.matches = data.matches;
-                changed = true;
-              }
-              if (data.scoreConfig && JSON.stringify(this.scoreConfig) !== JSON.stringify(data.scoreConfig)) {
-                this.scoreConfig = data.scoreConfig;
-                changed = true;
-              }
-              if (data.players && JSON.stringify(this.players) !== JSON.stringify(data.players)) {
-                this.players = data.players;
-                changed = true;
-              }
-              if (data.teams && JSON.stringify(this.teams) !== JSON.stringify(data.teams)) {
-                this.teams = data.teams;
-                changed = true;
-              }
-              if (changed) {
-                this.propagateKnockoutTeams();
-                this.saveToStorageLocal();
-                this.notifyListeners();
-              }
+        FirebaseService.onStateChange((data) => {
+          if (data) {
+            let changed = false;
+            if (data.matches && JSON.stringify(this.matches) !== JSON.stringify(data.matches)) {
+              this.matches = data.matches;
+              changed = true;
+            }
+            if (data.scoreConfig && JSON.stringify(this.scoreConfig) !== JSON.stringify(data.scoreConfig)) {
+              this.scoreConfig = data.scoreConfig;
+              changed = true;
+            }
+            if (data.players && JSON.stringify(this.players) !== JSON.stringify(data.players)) {
+              this.players = data.players;
+              changed = true;
+            }
+            if (data.teams && JSON.stringify(this.teams) !== JSON.stringify(data.teams)) {
+              this.teams = data.teams;
+              changed = true;
+            }
+            if (changed) {
+              this.propagateKnockoutTeams();
+              this.saveToStorageLocal();
+              this.notifyListeners();
             }
           } else {
-            // First run: Upload current local state to Firestore as initial value
-            this.saveToFirestore();
+            // First run: Upload current local state to Firebase as initial value
+            this.saveToFirebase();
           }
         });
       } catch (e) {
-        console.error("Failed to establish real-time Firestore sync listener:", e);
+        console.error("❌ Failed to establish real-time Firebase sync listener:", e);
       }
     }
   }
@@ -112,21 +108,17 @@ export class TournamentState {
 
   saveToStorage() {
     this.saveToStorageLocal();
-    this.saveToFirestore();
+    this.saveToFirebase();
   }
 
-  saveToFirestore() {
-    if (!db) return;
-    try {
-      setDoc(doc(db, "badminton", "state"), {
+  saveToFirebase() {
+    if (FirebaseService.isAvailable()) {
+      FirebaseService.saveState({
         players: this.players,
         teams: this.teams,
         matches: this.matches,
-        scoreConfig: this.scoreConfig,
-        updatedAt: Date.now()
+        scoreConfig: this.scoreConfig
       });
-    } catch (e) {
-      console.error("Failed to write state to Firestore:", e);
     }
   }
 
@@ -160,7 +152,17 @@ export class TournamentState {
       }
     };
     this.propagateKnockoutTeams();
-    this.saveToStorage();
+    this.saveToStorageLocal();
+    
+    if (FirebaseService.isAvailable()) {
+      FirebaseService.resetAll({
+        players: this.players,
+        teams: this.teams,
+        matches: this.matches,
+        scoreConfig: this.scoreConfig
+      });
+    }
+    
     this.notifyListeners();
   }
 
