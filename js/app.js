@@ -311,6 +311,7 @@ class BadmintonApp {
     if (activeTab) {
       pill.style.width = `${activeTab.offsetWidth}px`;
       pill.style.transform = `translateX(${activeTab.offsetLeft}px)`;
+      activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
   }
 
