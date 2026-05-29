@@ -13,10 +13,10 @@ export class AdminPanel {
     
     this.passkeys = {
       'goodmintongg2026': { role: 'admin', label: 'Super Admin' },
-      'ref15': { role: 'ref', pitch: 'Pitch 15', label: 'Pitch 15 Umpire' },
-      'ref16': { role: 'ref', pitch: 'Pitch 16', label: 'Pitch 16 Umpire' },
-      'ref20': { role: 'ref', pitch: 'Pitch 20', label: 'Pitch 20 Umpire' },
-      'ref21': { role: 'ref', pitch: 'Pitch 21', label: 'Pitch 21 Umpire' }
+      'ref1': { role: 'ref', pitch: 'Pitch 1', label: 'Pitch 1 Umpire' },
+      'ref2': { role: 'ref', pitch: 'Pitch 2', label: 'Pitch 2 Umpire' },
+      'ref3': { role: 'ref', pitch: 'Pitch 3', label: 'Pitch 3 Umpire' },
+      'ref4': { role: 'ref', pitch: 'Pitch 4', label: 'Pitch 4 Umpire' }
     };
     
     this.init();

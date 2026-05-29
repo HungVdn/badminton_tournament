@@ -2276,7 +2276,7 @@ class BadmintonApp {
   }
 
   renderLivePitches() {
-    const pitches = ["Pitch 15", "Pitch 16", "Pitch 20", "Pitch 21"];
+    const pitches = ["Pitch 1", "Pitch 2", "Pitch 3", "Pitch 4"];
     const liveMatches = this.sync.getLiveMatches();
 
     return pitches.map(pitch => {

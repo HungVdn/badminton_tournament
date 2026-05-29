@@ -19,7 +19,27 @@ export class TournamentState {
 
     this.players = savedPlayers ? JSON.parse(savedPlayers) : [...INITIAL_PLAYERS];
     this.teams = savedTeams ? JSON.parse(savedTeams) : [...INITIAL_TEAMS];
-    this.matches = savedMatches ? JSON.parse(savedMatches) : [...INITIAL_MATCHES];
+
+    const migratePitches = (matchesList) => {
+      if (!Array.isArray(matchesList)) return { updated: matchesList, changed: false };
+      let changed = false;
+      const updated = matchesList.map(m => {
+        let pitch = m.pitch;
+        if (pitch === "Pitch 15") { pitch = "Pitch 1"; changed = true; }
+        else if (pitch === "Pitch 16") { pitch = "Pitch 2"; changed = true; }
+        else if (pitch === "Pitch 20") { pitch = "Pitch 3"; changed = true; }
+        else if (pitch === "Pitch 21") { pitch = "Pitch 4"; changed = true; }
+        return { ...m, pitch };
+      });
+      return { updated, changed };
+    };
+
+    let loadedMatches = savedMatches ? JSON.parse(savedMatches) : [...INITIAL_MATCHES];
+    const initialMigration = migratePitches(loadedMatches);
+    this.matches = initialMigration.updated;
+    if (initialMigration.changed) {
+      this.saveToStorageLocal();
+    }
 
     const defaultScoreConfig = {
       "Men's Doubles": {
@@ -67,9 +87,12 @@ export class TournamentState {
         FirebaseService.onStateChange((data) => {
           if (data) {
             let changed = false;
-            if (data.matches && JSON.stringify(this.matches) !== JSON.stringify(data.matches)) {
-              this.matches = data.matches;
-              changed = true;
+            if (data.matches) {
+              const migration = migratePitches(data.matches);
+              if (JSON.stringify(this.matches) !== JSON.stringify(migration.updated)) {
+                this.matches = migration.updated;
+                changed = true;
+              }
             }
             if (data.scoreConfig && JSON.stringify(this.scoreConfig) !== JSON.stringify(data.scoreConfig)) {
               this.scoreConfig = data.scoreConfig;
@@ -378,7 +401,7 @@ export class TournamentState {
           id: sf1Id,
           category: cat,
           stage: "Semi-finals",
-          pitch: cat === "Men's Doubles" ? "Pitch 15" : "Pitch 20",
+          pitch: cat === "Men's Doubles" ? "Pitch 1" : "Pitch 3",
           time: sfTime,
           team1: t1,
           team2: t4,
@@ -394,6 +417,8 @@ export class TournamentState {
           sf1.team1 = t1;
           sf1.team2 = t4;
         }
+        sf1.pitch = cat === "Men's Doubles" ? "Pitch 1" : "Pitch 3";
+        sf1.time = sfTime;
       }
 
       if (!sf2) {
@@ -401,7 +426,7 @@ export class TournamentState {
           id: sf2Id,
           category: cat,
           stage: "Semi-finals",
-          pitch: cat === "Men's Doubles" ? "Pitch 16" : "Pitch 21",
+          pitch: cat === "Men's Doubles" ? "Pitch 2" : "Pitch 4",
           time: sfTime,
           team1: t2,
           team2: t3,
@@ -416,6 +441,8 @@ export class TournamentState {
           sf2.team1 = t2;
           sf2.team2 = t3;
         }
+        sf2.pitch = cat === "Men's Doubles" ? "Pitch 2" : "Pitch 4";
+        sf2.time = sfTime;
       }
 
       // Calculate winners/losers of SFs if completed, else placeholders
@@ -431,7 +458,7 @@ export class TournamentState {
           id: bId,
           category: cat,
           stage: "Bronze Match",
-          pitch: cat === "Men's Doubles" ? "Pitch 15" : "Pitch 20",
+          pitch: "Pitch 2",
           time: finalTime,
           team1: sf1Loser,
           team2: sf2Loser,
@@ -446,6 +473,8 @@ export class TournamentState {
           bMatch.team1 = sf1Loser;
           bMatch.team2 = sf2Loser;
         }
+        bMatch.pitch = "Pitch 2";
+        bMatch.time = finalTime;
       }
 
       // 3. Grand Finals (Championship)
@@ -454,7 +483,7 @@ export class TournamentState {
           id: fId,
           category: cat,
           stage: "Grand Final",
-          pitch: cat === "Men's Doubles" ? "Pitch 16" : "Pitch 21",
+          pitch: "Pitch 3",
           time: finalTime,
           team1: sf1Winner,
           team2: sf2Winner,
@@ -469,6 +498,8 @@ export class TournamentState {
           fMatch.team1 = sf1Winner;
           fMatch.team2 = sf2Winner;
         }
+        fMatch.pitch = "Pitch 3";
+        fMatch.time = finalTime;
       }
     });
   }
