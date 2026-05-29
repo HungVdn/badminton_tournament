@@ -1372,40 +1372,68 @@ class BadmintonApp {
     const bracketContainers = document.querySelectorAll('.bracket-visualizer');
     if (bracketContainers.length === 0) return;
 
+    const clearHighlights = (container) => {
+      const relatedNodes = container.querySelectorAll('[data-team-name]');
+      relatedNodes.forEach(node => {
+        node.classList.remove('team-highlight-active');
+        const parentNode = node.closest('.bracket-node');
+        if (parentNode) {
+          parentNode.classList.remove('node-highlight-active');
+        }
+      });
+    };
+
+    const applyHighlight = (container, teamName) => {
+      const relatedNodes = container.querySelectorAll(`[data-team-name="${CSS.escape(teamName)}"]`);
+      relatedNodes.forEach(node => {
+        node.classList.add('team-highlight-active');
+        const parentNode = node.closest('.bracket-node');
+        if (parentNode) {
+          parentNode.classList.add('node-highlight-active');
+        }
+      });
+    };
+
     bracketContainers.forEach(bracketContainer => {
+      // Desktop Hover
       bracketContainer.addEventListener('mouseover', (e) => {
+        if (window.matchMedia('(hover: none)').matches) return;
+        
         const teamEl = e.target.closest('[data-team-name]');
         if (!teamEl) return;
 
         const teamName = teamEl.getAttribute('data-team-name');
         if (!teamName || teamName.includes('Winner') || teamName.includes('Loser') || teamName.includes('Place')) return;
 
-        // Find all elements with this team name and highlight
-        const relatedNodes = document.querySelectorAll(`[data-team-name="${CSS.escape(teamName)}"]`);
-        relatedNodes.forEach(node => {
-          node.classList.add('team-highlight-active');
-          const parentNode = node.closest('.bracket-node');
-          if (parentNode) {
-            parentNode.classList.add('node-highlight-active');
-          }
-        });
+        applyHighlight(bracketContainer, teamName);
       });
 
       bracketContainer.addEventListener('mouseout', (e) => {
+        if (window.matchMedia('(hover: none)').matches) return;
+        clearHighlights(bracketContainer);
+      });
+
+      // Mobile Tap / Toggle
+      bracketContainer.addEventListener('click', (e) => {
         const teamEl = e.target.closest('[data-team-name]');
-        if (!teamEl) return;
+        if (!teamEl) {
+          clearHighlights(bracketContainer);
+          return;
+        }
 
         const teamName = teamEl.getAttribute('data-team-name');
-        if (!teamName) return;
+        if (!teamName || teamName.includes('Winner') || teamName.includes('Loser') || teamName.includes('Place')) {
+          clearHighlights(bracketContainer);
+          return;
+        }
 
-        const relatedNodes = document.querySelectorAll(`[data-team-name]`);
-        relatedNodes.forEach(node => {
-          node.classList.remove('team-highlight-active');
-          const parentNode = node.closest('.bracket-node');
-          if (parentNode) {
-            parentNode.classList.remove('node-highlight-active');
-          }
-        });
+        // On mobile, toggle highlight
+        const isHighlighted = teamEl.classList.contains('team-highlight-active');
+        clearHighlights(bracketContainer);
+
+        if (!isHighlighted) {
+          applyHighlight(bracketContainer, teamName);
+        }
       });
     });
   }

@@ -746,6 +746,10 @@ html[data-theme="light"] .nav-active-pill {
   text-shadow: 0 0 10px rgba(255, 0, 127, 0.6);
 }
 
+[data-team-name] {
+  cursor: pointer;
+}
+
 .node-highlight-active {
   border-color: #ff007f !important;
   box-shadow: 
