@@ -28,9 +28,9 @@ A premium, interactive Single-Page Application (SPA) designed to manage, spectat
 - **Status Filter**: Toggle pills to switch between All, Scheduled, or Completed fixtures.
 
 ### 🌳 Connected Playoff Brackets
-- **SVG Path Connections**: Interactive tournament tree that lights up connection lines on node hovers.
+- **Modern Curved Connectors**: An interactive tournament tree featuring sleek CSS curved lines that adapt dynamically to viewport and column heights.
 - **Auto-Promotion**: Automatically promotes group stage winners/runners-up to Semi-finals, Grand Finals, and Bronze Match spots.
-- **Visual Medal Pedestals**: Direct visual integration with the Honors Podium.
+- **Path Highlighting**: Hover or tap on any team's name to highlight their tournament path throughout the bracket tree.
 
 ### 🏆 Honors Podium (Bảng Vàng)
 - **3D columns layout**: Silver column on the left, tallest Gold column in the center with a floating crown (`👑`), and Bronze column on the right.
@@ -55,7 +55,7 @@ A premium, interactive Single-Page Application (SPA) designed to manage, spectat
 - **Zero-Backend Sync**: Operates entirely client-side using sessionStorage and BroadcastChannel streams.
 
 ### 🔐 Admin & Referee Console
-- **Passkey Gateway**: Restricts access based on referee pitch roles (`ref15`, `ref16`, `ref20`, `ref21`) or Super Admin credentials (`goodmintongg2026`).
+- **Passkey Gateway**: Restricts access based on referee pitch roles (`ref1`, `ref2`, `ref3`, `ref4`) or Super Admin credentials (`goodmintongg2026`).
 - **Live Umpiring Interface**: Referee console featuring massive tap-to-increment overlays, score undo buttons, and deuce validation.
 
 ---
@@ -111,10 +111,10 @@ To access the referee scoreboards or the admin panel:
 1. Click the **🔐 Portal Login** button in the top navigation bar.
 2. Enter a valid passkey:
    - **Super Admin**: `goodmintongg2026` (access to all scorekeeping and override features)
-   - **Pitch 15 Umpire**: `ref15` (locked to Pitch 15 matches)
-   - **Pitch 16 Umpire**: `ref16` (locked to Pitch 16 matches)
-   - **Pitch 20 Umpire**: `ref20` (locked to Pitch 20 matches)
-   - **Pitch 21 Umpire**: `ref21` (locked to Pitch 21 matches)
+   - **Pitch 1 Umpire**: `ref1` (locked to Pitch 1 matches)
+   - **Pitch 2 Umpire**: `ref2` (locked to Pitch 2 matches)
+   - **Pitch 3 Umpire**: `ref3` (locked to Pitch 3 matches)
+   - **Pitch 4 Umpire**: `ref4` (locked to Pitch 4 matches)
 
 ---
 
