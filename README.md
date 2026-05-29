@@ -50,9 +50,10 @@ A premium, interactive Single-Page Application (SPA) designed to manage, spectat
 - **Rules Engine**: BWF-compliant doubles serve tracking. Clicking court zones swaps server/receiver positions based on even/odd scores.
 - **Shuttlecock Animation**: Displays parabolic flight paths between courts using SVG motion paths.
 
-### ⚡ Live Referee Sync Engine
-- **BroadcastChannel API**: Synchronizes referee console actions (live score changes, active servers, ends swaps) with public spectator screens in real-time.
-- **Zero-Backend Sync**: Operates entirely client-side using sessionStorage and BroadcastChannel streams.
+### ⚡ Live Referee Sync Engine & Cloud Sync
+- **Firebase Realtime Database**: Synchronizes the entire tournament state (players, teams, matches, settings) and active live match data across all client devices.
+- **Local Fallback**: Utilizes localStorage to store scores and state if offline or if Firebase is unavailable, ensuring offline resilience.
+- **BroadcastChannel API**: Synchronizes referee console actions locally between browser tabs in real-time.
 
 ### 🔐 Admin & Referee Console
 - **Passkey Gateway**: Restricts access based on referee pitch roles (`ref1`, `ref2`, `ref3`, `ref4`) or Super Admin credentials (`goodmintongg2026`).
@@ -72,6 +73,8 @@ badminton_tournament/
 │   ├── app.js              # Coordinator managing tab routing, search filters, and modals
 │   ├── state.js            # Core state engine calculating standings and brackets
 │   ├── data.js             # Initial matches schedule and teams database
+│   ├── firebase-config.js  # Firebase configuration and connection details
+│   ├── firebase-service.js # Firebase Realtime Database sync service layer
 │   ├── admin.js            # Login handler and referee role dispatcher
 │   ├── sync.js             # BroadcastChannel sync layer
 │   ├── umpire.js           # Live referee scorekeeper overlay console
