@@ -79,7 +79,9 @@ badminton_tournament/
 │   ├── sync.js             # BroadcastChannel sync layer
 │   ├── umpire.js           # Live referee scorekeeper overlay console
 │   └── court-simulator.js  # Interactive SVG doubles rules simulator
-└── dist/                   # Bundled production builds
+├── public/                 # Static assets directory
+│   └── teams/              # Team avatar profiles and badges (MD-1 to MD-5, XD-1 to XD-5 PNGs)
+└── dist/                   # Bundled production builds (compiled output)
 ```
 
 ---
