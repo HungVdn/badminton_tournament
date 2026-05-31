@@ -2561,12 +2561,7 @@ FIREBASE: `))}restoreState_(){this.tryAuth(),this.tryAppCheck();for(const e of t
             </div>
 
             <!-- Connectors Column 0 -->
-            <div class="bracket-connectors flex flex-col justify-around py-4">
-              <div class="connector-fork" style="height: 100%; border: none; display: flex; flex-direction: column; justify-content: space-around;">
-                <div class="connector-line horizontal" style="opacity: 0.35;"></div>
-                <div class="connector-line horizontal" style="opacity: 0.35;"></div>
-              </div>
-            </div>
+            <div class="bracket-connectors tree-diverge" style="opacity: 0.4;"></div>
 
             <!-- Semifinals Column -->
             <div class="bracket-col">
@@ -2581,39 +2576,23 @@ FIREBASE: `))}restoreState_(){this.tryAuth(),this.tryAppCheck();for(const e of t
             </div>
 
             <!-- Connectors Column 1 -->
-            <div class="bracket-connectors flex flex-col justify-around py-4">
-              <div class="connector-fork">
-                <div class="connector-line horizontal"></div>
-                <div class="connector-line vertical height-half"></div>
-              </div>
-              <div class="connector-fork mt-8">
-                <div class="connector-line horizontal"></div>
-                <div class="connector-line vertical height-half"></div>
-              </div>
-            </div>
+            <div class="bracket-connectors tree-converge"></div>
 
             <!-- Finals Column -->
-            <div class="bracket-col flex flex-col justify-around">
-              <div class="bracket-group">
+            <div class="bracket-col flex flex-col justify-center" style="position: relative;">
+              <div class="bracket-group" style="position: relative; z-index: 2;">
                 <div class="node-label text-gold font-bold">🏆 GRAND CHAMPIONSHIP</div>
                 ${u(a.f)}
               </div>
               
-              <div class="bracket-group mt-6">
+              <div class="bracket-group" style="position: absolute; bottom: 0; left: 0; width: 100%; z-index: 2;">
                 <div class="node-label text-bronze font-bold">🥉 THIRD-PLACE MATCH</div>
                 ${u(a.b)}
               </div>
             </div>
 
             <!-- Connectors Column 2 -->
-            <div class="bracket-connectors flex flex-col justify-around py-4">
-              <div class="connector-fork">
-                <div class="connector-line horizontal" style="opacity: 0.35;"></div>
-              </div>
-              <div class="connector-fork mt-8">
-                <div class="connector-line horizontal" style="opacity: 0.35;"></div>
-              </div>
-            </div>
+            <div class="bracket-connectors tree-straight" style="opacity: 0.35;"></div>
 
             <!-- Bảng Vàng / Podium Column -->
             <div class="bracket-col flex flex-col justify-center" style="width: 190px; gap: 0.75rem;">
